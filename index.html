@@ -1275,9 +1275,41 @@
         setFileStatus(false, "브라우저 미지원", "DecompressionStream 미지원: Chrome/Edge 권장");
         ui.hintLine.textContent = "이 브라우저에서는 xlsx(zip) 해제가 불가능합니다. Chrome/Edge로 열어주세요.";
       } else {
-        setFileStatus(false, "엑셀 미로드", "xlsx 업로드를 해주세요.");
+        loadBundledXlsx();
       }
     })();
+
+    async function loadBundledXlsx() {
+  try {
+    setFileStatus(false, "로딩 중…", "서버의 data.xlsx를 불러오는 중");
+
+    const res = await fetch("./data.xlsx");
+    if (!res.ok) {
+      throw new Error("xlsx.xlsx를 불러오지 못했습니다");
+    }
+
+    const buf = await res.arrayBuffer();
+    const { t60, t65 } = await parseXlsx(buf);
+
+    tables["6.0"] = t60;
+    tables["6.5"] = t65;
+
+    setFileStatus(
+      true,
+      "xlsx.xlsx",
+      `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`
+    );
+
+    refreshDatalists();
+    computeAndRender();
+    toast("엑셀 자동 로드 완료");
+  } catch (e) {
+    console.error(e);
+    setFileStatus(false, "엑셀 자동 로드 실패", String(e.message || e));
+    badgeNA();
+    ui.hintLine.textContent = "서버의 xlsx.xlsx를 불러오지 못했습니다.";
+  }
+}
   </script>
 </body>
 </html>
