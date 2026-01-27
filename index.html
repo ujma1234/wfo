@@ -516,12 +516,12 @@
             <div class="row">
               <label>
                 Sphere (spl)
-                <input id="inpSph" class="in" inputmode="decimal" list="dlSph" placeholder="예: -3.00" autocomplete="off" />
+                <input id="inpSph" class="in" placeholder="예: -3.00" autocomplete="off" />
               </label>
 
               <label>
                 Cylinder (cyl)
-                <input id="inpCyl" class="in" inputmode="decimal" list="dlCyl" placeholder="예: -1.00" autocomplete="off" />
+                <input id="inpCyl" class="in" placeholder="예: -1.00" autocomplete="off" />
               </label>
             </div>
 
@@ -593,8 +593,6 @@
         </div>
       </div>
 
-      <datalist id="dlSph"></datalist>
-      <datalist id="dlCyl"></datalist>
     </div>
   </div>
 
@@ -651,9 +649,6 @@
       themeIcon: document.getElementById("themeIcon"),
       themeText: document.getElementById("themeText"),
 
-      dlSph: document.getElementById("dlSph"),
-      dlCyl: document.getElementById("dlCyl"),
-
       favGrid: document.getElementById("favGrid"),
       clearFavBtn: document.getElementById("clearFavBtn"),
 
@@ -703,7 +698,6 @@
         ? "6.0mm: 두께 − WFO6 − 100"
         : "6.5mm: 두께 − WFO6.5 − 100";
       renderFavorites();
-      refreshDatalists();
       computeAndRender();
     }
     ui.tab60.addEventListener("click", ()=>setMode("6.0"));
@@ -840,19 +834,6 @@
       toast("Clear 완료");
     });
 
-    // =============================
-    // Autocomplete lists
-    // =============================
-    function refreshDatalists(){
-      const t = tables[mode];
-      if (!t){
-        ui.dlSph.innerHTML = "";
-        ui.dlCyl.innerHTML = "";
-        return;
-      }
-      ui.dlSph.innerHTML = t.sphList.map(n=>`<option value="${n}"></option>`).join("");
-      ui.dlCyl.innerHTML = t.cylList.map(n=>`<option value="${n}"></option>`).join("");
-    }
     function findExactInList(list, input){
       const n = numOrNaN(input);
       if (!Number.isFinite(n)) return null;
@@ -870,7 +851,6 @@
       if (!t){
         badgeNA();
         ui.hintLine.textContent = "엑셀을 업로드하면 자동 계산됩니다.";
-        refreshDatalists();
         renderFavorites();
         return;
       }
@@ -881,7 +861,7 @@
 
       if (!sphIn || !cylIn || !thkIn){
         badgeNA();
-        ui.hintLine.textContent = "sph / cyl / 두께를 입력하세요. (자동완성 지원)";
+        ui.hintLine.textContent = "sph / cyl / 두께를 입력하세요.";
         return;
       }
 
@@ -1235,7 +1215,6 @@
         setFileStatus(true, f.name, `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`);
         toast("엑셀 로드 완료");
 
-        refreshDatalists();
         computeAndRender();
       }catch(err){
         console.error(err);
@@ -1300,7 +1279,6 @@
       `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`
     );
 
-    refreshDatalists();
     computeAndRender();
     toast("엑셀 자동 로드 완료");
   } catch (e) {
