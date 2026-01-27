@@ -523,7 +523,7 @@
           <div class="content">
             <div class="row">
               <label>
-                Sphere (spl)
+                Sphere (sph)
                 <input id="inpSph" class="in" placeholder="예: -3.00" autocomplete="off" />
               </label>
 
@@ -845,8 +845,10 @@
     function findExactInList(list, input){
       const n = numOrNaN(input);
       if (!Number.isFinite(n)) return null;
+      // 부동소수점 비교: 0.001 이내면 동일값으로 간주
+      const EPS = 0.001;
       for (const v of list){
-        if (v === n) return v;
+        if (Math.abs(v - n) < EPS) return v;
       }
       return null;
     }
@@ -925,12 +927,6 @@
         n = n*26 + (c - 64);
       }
       return n;
-    }
-    function parseA1(a1){
-      // e.g., "B12"
-      const m = /^([A-Z]+)(\d+)$/.exec(a1);
-      if (!m) return null;
-      return { c: colToNumber(m[1]), r: parseInt(m[2],10) };
     }
 
     // --- ZIP parsing (central directory) ---
@@ -1272,7 +1268,7 @@
 
     const res = await fetch("./data.xlsx");
     if (!res.ok) {
-      throw new Error("xlsx.xlsx를 불러오지 못했습니다");
+      throw new Error("data.xlsx를 불러오지 못했습니다");
     }
 
     const buf = await res.arrayBuffer();
@@ -1283,7 +1279,7 @@
 
     setFileStatus(
       true,
-      "xlsx.xlsx",
+      "data.xlsx",
       `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`
     );
 
@@ -1293,7 +1289,7 @@
     console.error(e);
     setFileStatus(false, "엑셀 자동 로드 실패", String(e.message || e));
     badgeNA();
-    ui.hintLine.textContent = "서버의 xlsx.xlsx를 불러오지 못했습니다.";
+    ui.hintLine.textContent = "서버의 data.xlsx를 불러오지 못했습니다.";
   }
 }
   </script>
