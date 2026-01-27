@@ -52,28 +52,23 @@
 
     *{box-sizing:border-box}
     html{
-      height:100%;
+      min-height:100%;
       overflow-x:hidden;
       overscroll-behavior-x:none;
+      background:
+        radial-gradient(900px 450px at 15% 0%, rgba(49,130,246,.16), transparent 60%),
+        radial-gradient(850px 480px at 85% 10%, rgba(14,165,233,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg2), var(--bg));
+      background-attachment:scroll;
     }
     body{
       min-height:100%;
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
       color:var(--txt);
-      background: var(--bg);
+      background:transparent;
       overflow-x:hidden;
       overscroll-behavior-x:none;
-    }
-    body::before{
-      content:'';
-      position:fixed;
-      inset:0;
-      z-index:-1;
-      background:
-        radial-gradient(900px 450px at 15% 0%, rgba(49,130,246,.16), transparent 60%),
-        radial-gradient(850px 480px at 85% 10%, rgba(14,165,233,.10), transparent 60%),
-        linear-gradient(180deg, var(--bg2), var(--bg));
     }
 
     .shell{
@@ -521,8 +516,8 @@
         <!-- Main -->
         <div class="card">
           <div class="seg">
-            <button id="tab60" class="active" type="button">6.0mm</button>
-            <button id="tab65" type="button">6.5mm</button>
+            <button id="tab60" type="button">6.0mm</button>
+            <button id="tab65" class="active" type="button">6.5mm</button>
           </div>
 
           <div class="content">
@@ -549,7 +544,7 @@
                   <div style="display:flex;flex-direction:column;gap:4px;">
                     <div style="font-size:12px;color:var(--muted);font-weight:1150;">결과 (잔여)</div>
                     <div id="formulaLine" class="mono" style="font-size:11px;color:var(--muted2);font-weight:900;">
-                      6.0mm: 두께 − WFO6 − 100
+                      6.5mm: 두께 − WFO6.5 − 100
                     </div>
                   </div>
                   <span id="statusBadge" class="badge">N/A</span>
