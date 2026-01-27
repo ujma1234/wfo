@@ -51,16 +51,29 @@
     }
 
     *{box-sizing:border-box}
-    html,body{height:100%}
+    html{
+      height:100%;
+      overflow-x:hidden;
+      overscroll-behavior-x:none;
+    }
     body{
+      min-height:100%;
       margin:0;
       font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
       color:var(--txt);
+      background: var(--bg);
+      overflow-x:hidden;
+      overscroll-behavior-x:none;
+    }
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      z-index:-1;
       background:
         radial-gradient(900px 450px at 15% 0%, rgba(49,130,246,.16), transparent 60%),
         radial-gradient(850px 480px at 85% 10%, rgba(14,165,233,.10), transparent 60%),
         linear-gradient(180deg, var(--bg2), var(--bg));
-      overflow-x:hidden;
     }
 
     .shell{
@@ -655,7 +668,7 @@
       toast: document.getElementById("toast"),
     };
 
-    let mode = "6.0"; // "6.0" or "6.5"
+    let mode = "6.5"; // "6.0" or "6.5"
 
     const tables = { "6.0": null, "6.5": null }; // {sphList,cylList,valueMap}
     const FAV_KEY = "wfo_calc_favs_offline_v1";
@@ -1243,7 +1256,7 @@
       }
 
       // initial mode
-      setMode("6.0");
+      setMode("6.5");
 
       // initial favorites + UI
       renderFavorites();
