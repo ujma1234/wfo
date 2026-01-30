@@ -406,6 +406,33 @@
       font-weight: 950;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
+    .fav{
+      position:relative;
+    }
+    .fav-del{
+      position:absolute;
+      top:6px;
+      right:6px;
+      width:20px;
+      height:20px;
+      border:none;
+      border-radius:50%;
+      background:rgba(239,68,68,.15);
+      color:rgba(239,68,68,.9);
+      font-size:11px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      opacity:0;
+      transition:opacity .14s ease, background .14s ease;
+    }
+    .fav:hover .fav-del{
+      opacity:1;
+    }
+    .fav-del:hover{
+      background:rgba(239,68,68,.25);
+    }
     .fav.empty{
       cursor:default;
       opacity:.60;
@@ -562,10 +589,15 @@
 
             <div class="favwrap">
               <div class="favtitle">
-                <span>자주 쓰는 값 (최근 사용 TOP 5)</span>
-                <button class="btn ghost" id="clearFavBtn" type="button" style="padding:8px 10px;border-radius:12px;font-size:12px;">
-                  🧹 즐겨찾기 초기화
-                </button>
+                <span>즐겨찾기 (최대 5개)</span>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn ghost" id="addFavBtn" type="button" style="padding:8px 10px;border-radius:12px;font-size:12px;">
+                    ⭐ 등록
+                  </button>
+                  <button class="btn ghost" id="clearFavBtn" type="button" style="padding:8px 10px;border-radius:12px;font-size:12px;">
+                    🧹 삭제
+                  </button>
+                </div>
               </div>
               <div class="favgrid" id="favGrid"></div>
             </div>
@@ -658,6 +690,7 @@
       themeText: document.getElementById("themeText"),
 
       favGrid: document.getElementById("favGrid"),
+      addFavBtn: document.getElementById("addFavBtn"),
       clearFavBtn: document.getElementById("clearFavBtn"),
 
       toast: document.getElementById("toast"),
@@ -747,44 +780,62 @@
     function toKey(sph, cyl){ return `${sph}|${cyl}`; }
 
     // =============================
-    // Favorites
+    // Favorites (수동 등록 방식)
     // =============================
     function loadFavStore(){
       try{
         const raw = localStorage.getItem(FAV_KEY);
-        if (!raw) return { "6.0": {}, "6.5": {} };
+        if (!raw) return { "6.0": [], "6.5": [] };
         const obj = JSON.parse(raw);
-        if (!obj["6.0"]) obj["6.0"] = {};
-        if (!obj["6.5"]) obj["6.5"] = {};
+        // 배열 형태로 마이그레이션
+        if (!Array.isArray(obj["6.0"])) obj["6.0"] = [];
+        if (!Array.isArray(obj["6.5"])) obj["6.5"] = [];
         return obj;
       }catch(_e){
-        return { "6.0": {}, "6.5": {} };
+        return { "6.0": [], "6.5": [] };
       }
     }
     function saveFavStore(store){
       localStorage.setItem(FAV_KEY, JSON.stringify(store));
     }
-    function bumpFavorite(){
+    function addFavorite(){
       const sph = ui.inpSph.value.trim();
       const cyl = ui.inpCyl.value.trim();
       const thk = ui.inpThk.value.trim();
-      if (!sph || !cyl || !thk) return;
+      if (!sph || !cyl || !thk){
+        toast("sph, cyl, 두께를 모두 입력하세요");
+        return;
+      }
 
       const store = loadFavStore();
       const k = `${sph}|${cyl}|${thk}`;
-      store[mode][k] = (store[mode][k] || 0) + 1;
-
-      const entries = Object.entries(store[mode]).sort((a,b)=>b[1]-a[1]);
-      store[mode] = Object.fromEntries(entries.slice(0, 40));
+      
+      // 이미 존재하면 제거 후 맨 앞에 추가
+      const idx = store[mode].indexOf(k);
+      if (idx !== -1) store[mode].splice(idx, 1);
+      
+      // 맨 앞에 추가
+      store[mode].unshift(k);
+      
+      // 최대 5개 유지
+      if (store[mode].length > 5) store[mode] = store[mode].slice(0, 5);
+      
       saveFavStore(store);
       renderFavorites();
+      toast("즐겨찾기에 등록되었습니다");
     }
-    function topFavorites(){
+    function removeFavorite(index){
       const store = loadFavStore();
-      const entries = Object.entries(store[mode] || {}).sort((a,b)=>b[1]-a[1]).slice(0,5);
-      return entries.map(([k,count])=>{
-        const [sph,cyl,thk] = k.split("|");
-        return { sph, cyl, thk, count };
+      store[mode].splice(index, 1);
+      saveFavStore(store);
+      renderFavorites();
+      toast("즐겨찾기에서 삭제되었습니다");
+    }
+    function getFavorites(){
+      const store = loadFavStore();
+      return (store[mode] || []).map(k => {
+        const [sph, cyl, thk] = k.split("|");
+        return { sph, cyl, thk };
       });
     }
     function escapeHtml(s){
@@ -794,7 +845,7 @@
     }
     function renderFavorites(){
       ui.favGrid.innerHTML = "";
-      const favs = topFavorites();
+      const favs = getFavorites();
       const slots = 5;
 
       for (let i=0;i<slots;i++){
@@ -803,31 +854,37 @@
         el.className = "fav" + (f ? "" : " empty");
 
         if (!f){
-          el.innerHTML = `<div class="t">빈 슬롯</div><div class="s">자주 쓰는 값이 표시됩니다</div>`;
+          el.innerHTML = `<div class="t">빈 슬롯</div><div class="s">⭐ 버튼으로 등록하세요</div>`;
           ui.favGrid.appendChild(el);
           continue;
         }
 
         el.innerHTML = `
           <div class="t">sph ${escapeHtml(f.sph)} / cyl ${escapeHtml(f.cyl)}</div>
-          <div class="s">두께 ${escapeHtml(f.thk)} · 사용 ${f.count}회</div>
+          <div class="s">두께 ${escapeHtml(f.thk)}</div>
+          <button class="fav-del" data-idx="${i}" type="button" title="삭제">✕</button>
         `;
-        el.addEventListener("click", ()=>{
+        el.addEventListener("click", (e)=>{
+          if (e.target.classList.contains("fav-del")) return;
           ui.inpSph.value = f.sph;
           ui.inpCyl.value = f.cyl;
           ui.inpThk.value = f.thk;
           computeAndRender();
         });
+        el.querySelector(".fav-del").addEventListener("click", (e)=>{
+          e.stopPropagation();
+          removeFavorite(i);
+        });
         ui.favGrid.appendChild(el);
       }
     }
+    ui.addFavBtn.addEventListener("click", addFavorite);
     ui.clearFavBtn.addEventListener("click", ()=>{
       const store = loadFavStore();
-      store[mode] = {};
+      store[mode] = [];
       saveFavStore(store);
       renderFavorites();
-      ui.hintLine.textContent = "즐겨찾기를 초기화했습니다.";
-      setTimeout(()=>computeAndRender(), 300);
+      toast("즐겨찾기를 모두 삭제했습니다");
     });
 
     // =============================
@@ -904,8 +961,6 @@
       ui.outVal.textContent = fmt2(res);
       ui.hintLine.textContent =
         `조회값=${fmt2(lookup)} → ${fmt2(thk)} − ${fmt2(lookup)} − ${OFFSET} = ${fmt2(res)}`;
-
-      bumpFavorite();
     }
 
     ["input","change","keyup"].forEach(ev=>{
