@@ -1327,11 +1327,11 @@
 
     async function loadBundledXlsx() {
   try {
-    setFileStatus(false, "로딩 중…", "서버의 data.xlsx를 불러오는 중");
+    setFileStatus(false, "로딩 중…", "서버의 data_2026_02_10.xlsx를 불러오는 중");
 
-    const res = await fetch("./data.xlsx");
+    const res = await fetch("./data_2026_02_10.xlsx");
     if (!res.ok) {
-      throw new Error("data.xlsx를 불러오지 못했습니다");
+      throw new Error("data_2026_02_10.xlsx를 불러오지 못했습니다");
     }
 
     const buf = await res.arrayBuffer();
@@ -1342,7 +1342,7 @@
 
     setFileStatus(
       true,
-      "data.xlsx",
+      "data_2026_02_10.xlsx",
       `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`
     );
 
@@ -1352,7 +1352,7 @@
     console.error(e);
     setFileStatus(false, "엑셀 자동 로드 실패", String(e.message || e));
     badgeNA();
-    ui.hintLine.textContent = "서버의 data.xlsx를 불러오지 못했습니다.";
+    ui.hintLine.textContent = "서버의 data_2026_02_10.xlsx를 불러오지 못했습니다.";
   }
 }
   </script>
