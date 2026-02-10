@@ -661,7 +661,9 @@
     const SHEET_60 = "WFO 6mm";
     const SHEET_65 = "WFO 6.5mm";
 
-    const R_SPH_START = 3, R_SPH_END = 51;
+    // sph는 행 3부터 시작, 끝은 동적 감지
+    const R_SPH_START = 3;
+    // cyl은 B~Z 고정
     const C_CYL_START = 2, C_CYL_END = 26;
 
     const OFFSET = 100;
@@ -1153,14 +1155,20 @@
     }
 
     function extractTableFromCellMap(cellMap){
-      // sph A3:A51
+      // sph: A열에서 행 3부터 숫자가 있는 동안 동적으로 읽기
       const sphList = [];
-      for (let r=R_SPH_START; r<=R_SPH_END; r++){
+      for (let r = R_SPH_START; r <= 200; r++){  // 최대 200행까지 탐색
         const v = cellMap.get(`A${r}`);
         const n = numOrNaN(v);
-        if (!Number.isFinite(n)) throw new Error("sph 범위(A3:A51)에서 숫자 파싱 실패: A" + r);
+        if (!Number.isFinite(n)) break;  // 숫자가 아니면 종료
         sphList.push(n);
       }
+      
+      if (sphList.length === 0) {
+        throw new Error("sph 데이터를 찾지 못했습니다 (A열, 행 3부터)");
+      }
+      
+      const R_SPH_END = R_SPH_START + sphList.length - 1;
 
       // cyl B2:Z2 => columns 2..26
       const cylList = [];
@@ -1173,7 +1181,7 @@
         cylList.push(n);
       }
 
-      // data B3:Z51
+      // data: sph 행 범위 x cyl 열 범위
       const valueMap = new Map();
       for (let i=0;i<sphList.length;i++){
         for (let j=0;j<cylList.length;j++){
