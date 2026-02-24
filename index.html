@@ -1197,7 +1197,8 @@
 
           const n = numOrNaN(v);
           const val = Number.isFinite(n) ? n : null;
-          valueMap.set(toKey(sphList[i], cylList[j]), val);
+          const k = toKey(sphList[i], cylList[j]);
+          if (!valueMap.has(k)) valueMap.set(k, val);
         }
       }
 
