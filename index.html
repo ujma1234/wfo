@@ -2,7 +2,7 @@
 <html lang="ko" data-theme="light">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,minimum-scale=1,user-scalable=no,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>절삭량 계산기 (6.0 / 6.5) - Offline XLSX</title>
 
   <style>
@@ -217,22 +217,31 @@
       flex:1;
       border: 1px solid var(--stroke);
       border-radius: 14px;
-      background: rgba(255,255,255,.75);
-      color: var(--muted);
+      background: transparent;
+      color: var(--muted2);
       padding: 11px 10px;
       cursor:pointer;
-      font-weight: 1000;
+      font-weight: 800;
       font-size: 13px;
-      transition: transform .14s ease, background .14s ease, border-color .14s ease, color .14s ease;
+      opacity: .85;
+      transition: transform .14s ease, background .14s ease, border-color .14s ease, color .14s ease, box-shadow .14s ease, opacity .14s ease;
+    }
+    .seg button:hover:not(.active){
+      background: rgba(49,130,246,.08);
+      color: var(--muted);
+      opacity: 1;
     }
     html[data-theme="dark"] .seg button{
-      background: rgba(255,255,255,.06);
+      background: transparent;
     }
     .seg button.active{
       color: #fff;
-      border-color: rgba(49,130,246,.60);
-      background: linear-gradient(180deg, rgba(49,130,246,.98), rgba(49,130,246,.86));
-      box-shadow: 0 12px 28px rgba(49,130,246,.18);
+      font-weight: 1000;
+      border-color: rgba(49,130,246,.85);
+      background: linear-gradient(180deg, rgba(49,130,246,1), rgba(37,110,225,1));
+      box-shadow: 0 10px 24px rgba(49,130,246,.42), inset 0 0 0 1px rgba(255,255,255,.18);
+      opacity: 1;
+      transform: translateY(-1px);
     }
     .seg button:active{ transform: scale(.99); }
 
@@ -327,7 +336,7 @@
 
     .value{
       font-size: clamp(32px, 4.8vw, 46px);
-      font-weight: 1150;
+      font-weight: 900;
       letter-spacing:-.9px;
       line-height:1.05;
       display:flex;
@@ -395,7 +404,7 @@
     }
     .fav .t{
       font-size: 12px;
-      font-weight: 1150;
+      font-weight: 900;
       color: var(--txt);
       line-height:1.2;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
@@ -459,7 +468,7 @@
       margin:0;
       font-size: 13px;
       letter-spacing:-.2px;
-      font-weight: 1150;
+      font-weight: 900;
     }
     .sidebox .small{
       font-size: 12px;
@@ -566,11 +575,11 @@
                 <input id="inpThk" class="in" inputmode="decimal" placeholder="예: 550" autocomplete="off" />
               </label>
 
-              <div class="result">
+              <div class="result" aria-live="polite">
                 <div class="hd">
                   <div style="display:flex;flex-direction:column;gap:4px;">
-                    <div style="font-size:12px;color:var(--muted);font-weight:1150;">결과 (잔여)</div>
-                    <div id="formulaLine" class="mono" style="font-size:11px;color:var(--muted2);font-weight:900;">
+                    <div style="font-size:12px;color:var(--muted);font-weight:900;">결과 (잔여)</div>
+                    <div id="formulaLine" class="mono" style="font-size:12px;color:var(--muted);font-weight:900;">
                       6.5mm: 두께 − WFO6.5 − 100
                     </div>
                   </div>
@@ -1328,11 +1337,11 @@
 
     async function loadBundledXlsx() {
   try {
-    setFileStatus(false, "로딩 중…", "서버의 data_2026_02_10.xlsx를 불러오는 중");
+    setFileStatus(false, "로딩 중…", "서버의 data_2026_06_23.xlsx를 불러오는 중");
 
-    const res = await fetch("./data_2026_02_10.xlsx");
+    const res = await fetch("./data_2026_06_23.xlsx");
     if (!res.ok) {
-      throw new Error("data_2026_02_10.xlsx를 불러오지 못했습니다");
+      throw new Error("data_2026_06_23.xlsx를 불러오지 못했습니다");
     }
 
     const buf = await res.arrayBuffer();
@@ -1343,7 +1352,7 @@
 
     setFileStatus(
       true,
-      "data_2026_02_10.xlsx",
+      "data_2026_06_23.xlsx",
       `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`
     );
 
@@ -1353,7 +1362,7 @@
     console.error(e);
     setFileStatus(false, "엑셀 자동 로드 실패", String(e.message || e));
     badgeNA();
-    ui.hintLine.textContent = "서버의 data_2026_02_10.xlsx를 불러오지 못했습니다.";
+    ui.hintLine.textContent = "서버의 data_2026_06_23.xlsx를 불러오지 못했습니다.";
   }
 }
   </script>
