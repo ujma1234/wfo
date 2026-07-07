@@ -1,0 +1,13 @@
+{
+  "name": "wfo-cut-calc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tools/verify.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "^29.1.1",
+    "playwright": "^1.61.1",
+    "xlsx": "^0.18.5"
+  }
+}

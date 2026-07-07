@@ -1,1370 +1,998 @@
-<!doctype html>
-<html lang="ko" data-theme="light">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>절삭량 계산기 (6.0 / 6.5) - Offline XLSX</title>
+<!DOCTYPE html>
+<html lang="ko" data-theme="light"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>절삭량 계산기 · WFO 6.0 / 6.5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     WFO 절삭량 계산기 — 디자인 시스템 (Linear 기반 · 단일 레이어)
+     정의: ./DESIGN.md  ·  액센트(#5e6ad2)는 focus/유효결과/CTA에만
+     ============================================================ */
+  :root{
+    --r-xs:4px; --r-sm:6px; --r:8px; --r-lg:12px; --r-xl:16px; --r-pill:9999px;
+    --sans:'Inter','Pretendard',system-ui,-apple-system,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+    /* Linear lavender-blue — 테마 공통 */
+    --signal:#5e6ad2; --signal-hover:#828fff; --signal-focus:#5e69d1; --signal-ink:#ffffff;
+    --good:#1f9d4d; --bad:#e5484d; --bad-dim:#f0b6b8;
+    --shadow-sm:0 1px 2px rgba(20,28,45,.05);
+    --shadow:0 1px 3px rgba(20,28,45,.06),0 12px 30px -14px rgba(20,28,45,.2);
+  }
+  html[data-theme="dark"]{
+    --bg:#080a10; --bg-soft:#0d1017; --surface:#141822; --surface-2:#1b202c; --surface-3:#232a38;
+    --line:#2a3242; --line-soft:#1f2531; --line-strong:#3a4353;
+    --ink:#f2f5fa; --ink-2:#c2cbdb; --ink-3:#8a94a8; --ink-4:#5c6579;
+    --signal-deep:#98a2ff; --field-bg:#0d1017;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 14px 30px -14px rgba(0,0,0,.6);
+    --shadow-sm:0 1px 2px rgba(0,0,0,.35);
+  }
+  html[data-theme="light"]{
+    --bg:#e8ecf3; --bg-soft:#eff2f7; --surface:#ffffff; --surface-2:#f1f5fb; --surface-3:#e3e9f2;
+    --line:#dbe1ea; --line-soft:#e9edf3; --line-strong:#c3ccd9;
+    --ink:#131722; --ink-2:#3f4757; --ink-3:#697588; --ink-4:#98a2b3;
+    --signal-deep:#4750c0; --field-bg:#f4f7fb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{font-size:16px}
+  body{
+    font-family:var(--sans);color:var(--ink);background:var(--bg);
+    min-height:100vh;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    display:flex;flex-direction:column;overflow-x:hidden;letter-spacing:-.01em;
+  }
+  ::selection{background:var(--signal);color:var(--signal-ink)}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:0}
+  .wrap{width:100%;max-width:1280px;margin:0 auto;padding:0 clamp(16px,3vw,32px) 12px;
+    flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
 
-  <style>
-    /* =============================
-       THEME TOKENS (Light/Dark)
-       ============================= */
-    :root{
-      /* 125% scale baseline */
-      font-size: 125%;
+  /* ============ HEADER ============ */
+  header.bar{
+    border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 80%,transparent);
+    backdrop-filter:blur(12px) saturate(1.4);position:sticky;top:0;z-index:30;
+  }
+  .bar-in{max-width:1280px;margin:0 auto;padding:12px clamp(16px,3vw,32px);
+    display:flex;align-items:center;gap:14px 16px;flex-wrap:wrap}
+  .brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 auto}
+  .mark{width:36px;height:36px;border:1px solid var(--line-strong);border-radius:var(--r);
+    display:grid;place-items:center;background:var(--surface);position:relative;flex:none}
+  .mark::before{content:"";width:13px;height:13px;border:2px solid var(--signal);border-radius:2px;transform:rotate(45deg)}
+  .mark::after{content:"";position:absolute;width:4px;height:4px;background:var(--signal);border-radius:50%}
+  .brand h1{font-size:16px;font-weight:600;letter-spacing:-.02em;line-height:1.15;white-space:nowrap;color:var(--ink)}
+  .brand .tag{font-size:12px;color:var(--ink-3);letter-spacing:0;margin-top:2px}
+  .bar-actions{display:flex;align-items:center;gap:8px;flex:0 0 auto}
+  .filechip{display:flex;align-items:center;gap:10px;height:40px;padding:0 13px;border:1px solid var(--line);border-radius:var(--r);
+    background:var(--surface);flex:1 1 300px;min-width:0}
+  .filechip .led{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none;
+    box-shadow:0 0 8px var(--good);animation:pulse 2.4s ease-in-out infinite}
+  .filechip.empty .led{background:var(--ink-4);box-shadow:none;animation:none}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .filechip .fname{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+  .filechip .fmeta{font-size:10.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btn{display:inline-flex;align-items:center;gap:7px;font-family:var(--sans);font-weight:500;font-size:13.5px;
+    color:var(--ink);background:var(--surface);border:1px solid var(--line);height:40px;padding:0 15px;border-radius:var(--r);
+    cursor:pointer;transition:.14s ease;white-space:nowrap}
+  .btn:hover{border-color:var(--line-strong);background:var(--surface-2)}
+  .btn:active{transform:translateY(1px)}
+  .btn svg{width:15px;height:15px}
+  .btn.primary{background:var(--signal);color:var(--signal-ink);border-color:var(--signal);font-weight:600}
+  .btn.primary:hover{background:var(--signal-hover);border-color:var(--signal-hover)}
+  .btn.icon{padding:0;width:40px;justify-content:center;color:var(--ink-2)}
 
-      --bg: #f4f6fa;
-      --bg2:#eef2ff;
-      --card: rgba(255,255,255,.94);
-      --card2: rgba(255,255,255,.86);
-      --stroke: rgba(15,23,42,.10);
-      --stroke2: rgba(15,23,42,.14);
-      --txt: #0f172a;
-      --muted: rgba(15,23,42,.62);
-      --muted2: rgba(15,23,42,.46);
+  /* ============ METER LINE ============ */
+  .meterline{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;margin:10px 0;padding:11px 18px;
+    border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-sm)}
+  .meterline .meter{display:inline-flex;align-items:baseline;gap:7px;min-width:0}
+  .meterline .lab{font-size:11px;font-weight:500;letter-spacing:.02em;color:var(--ink-3);flex:none}
+  .meterline b{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
+  .meterline b small{font-size:10px;font-weight:500;color:var(--ink-3);margin:0 1px}
+  .meterline em{font-style:normal;font-size:10.5px;color:var(--ink-4);margin-left:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .meterline .meter.s-good b{color:var(--signal-deep)}
+  .meterline .meter.s-bad b{color:var(--bad)}
+  .meterline .meter.s-good .lab{color:var(--signal-deep)}
 
-      --brand: #3182f6;
-      --brand2:#0ea5e9;
-      --good:#10b981;
-      --bad:#ef4444;
+  /* ============ MAIN GRID ============ */
+  .grid{display:grid;grid-template-columns:1.5fr minmax(0,1fr);gap:20px;align-items:start}
+  .panel{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);min-width:0;box-shadow:var(--shadow)}
+  .side{min-width:0;display:flex;flex-direction:column;gap:18px}
+  .panel-h{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:14px 18px;border-bottom:1px solid var(--line)}
+  .panel-h .t{font-size:14px;font-weight:600;letter-spacing:-.01em;color:var(--ink);
+    display:flex;align-items:center;gap:8px}
+  .panel-h .t svg{width:16px;height:16px;color:var(--signal)}
+  .panel-h .meta{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:0}
+  .panel-body{padding:16px 18px}
 
-      --shadow: 0 12px 34px rgba(15,23,42,.12);
-      --shadow2: 0 10px 26px rgba(15,23,42,.10);
+  /* segmented (6.0 / 6.5) */
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .seg button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    font-family:var(--sans);font-weight:600;font-size:18px;color:var(--ink-3);background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--r);min-height:60px;padding:12px;cursor:pointer;transition:.15s ease;letter-spacing:-.01em}
+  .seg button .lbl{font-size:11px;color:var(--ink-4);font-weight:500;letter-spacing:0}
+  .seg button:hover:not([aria-selected="true"]){border-color:var(--line-strong);color:var(--ink-2)}
+  .seg button[aria-selected="true"]{background:color-mix(in srgb,var(--signal) 13%,var(--surface));
+    border-color:var(--signal);color:var(--signal-deep);box-shadow:inset 0 0 0 1px var(--signal),0 4px 14px -6px color-mix(in srgb,var(--signal) 50%,transparent)}
+  .seg button[aria-selected="true"] .lbl{color:var(--signal-deep)}
 
-      --radius: 18px;
-      --radius2: 14px;
-    }
+  /* inputs */
+  .fields{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .field{display:flex;flex-direction:column;gap:8px}
+  .field.full{grid-column:1/-1}
+  .field label{font-size:13px;font-weight:500;color:var(--ink-2);
+    display:flex;align-items:center;justify-content:space-between}
+  .field label .tag{color:var(--ink-4);font-weight:400;font-size:11px}
+  .field .inwrap{position:relative;display:flex;align-items:center}
+  .field input{font-family:var(--mono);font-size:20px;font-weight:500;color:var(--ink);
+    background:var(--field-bg);border:1px solid var(--line);border-radius:var(--r);padding:12px 15px;width:100%;
+    transition:.13s ease;letter-spacing:0;font-variant-numeric:tabular-nums}
+  .field input::placeholder{color:var(--ink-4);font-weight:400}
+  .field input:focus{outline:0;border-color:var(--signal-focus);background:var(--surface);
+    box-shadow:0 0 0 3px color-mix(in srgb,var(--signal) 22%,transparent)}
+  .field input.bad{border-color:var(--bad);box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 22%,transparent)}
 
-    html[data-theme="dark"]{
-      --bg: #0b1220;
-      --bg2:#0f172a;
-      --card: rgba(15,23,42,.72);
-      --card2: rgba(15,23,42,.60);
-      --stroke: rgba(255,255,255,.10);
-      --stroke2: rgba(255,255,255,.14);
-      --txt: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.62);
-      --muted2: rgba(255,255,255,.45);
+  /* HERO / READOUT */
+  .hero{margin-top:12px;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;
+    background:var(--surface);position:relative;box-shadow:var(--shadow-sm)}
+  .hero.valid{border-color:color-mix(in srgb,var(--signal) 42%,var(--line));background:color-mix(in srgb,var(--signal) 5%,var(--surface))}
+  .hero.na{border-color:color-mix(in srgb,var(--bad) 34%,var(--line));background:color-mix(in srgb,var(--bad) 4%,var(--surface))}
+  .hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 18px;
+    border-bottom:1px solid var(--line-soft)}
+  .hero-top .ttl{font-size:12px;font-weight:600;color:var(--ink-3)}
+  .badge{font-size:11.5px;font-weight:500;padding:5px 11px;border-radius:var(--r);
+    display:inline-flex;align-items:center;gap:6px;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line)}
+  .badge .d{width:6px;height:6px;border-radius:50%;background:var(--ink-4)}
+  .badge.valid{color:var(--signal-deep);border-color:color-mix(in srgb,var(--signal) 30%,transparent);background:color-mix(in srgb,var(--signal) 8%,transparent)}
+  .badge.valid .d{background:var(--signal)}
+  .badge.na{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 30%,transparent);background:color-mix(in srgb,var(--bad) 8%,transparent)}
+  .badge.na .d{background:var(--bad)}
+  .hero-readout{padding:14px 18px 16px;position:relative}
+  .hero .formula{font-size:13px;color:var(--ink-3)}
+  .hero .formula b{color:var(--ink-2);font-weight:600}
+  .hero .big{font-family:var(--mono);font-weight:600;font-size:clamp(44px,6vw,60px);line-height:1;
+    letter-spacing:-.04em;margin-top:8px;color:var(--ink-4);font-variant-numeric:tabular-nums}
+  .hero.valid .big{color:var(--signal-deep);cursor:pointer}
+  .hero.valid .big:hover{filter:brightness(1.08)}
+  .hero.na .big{color:var(--bad)}
+  .hero .big small{font-family:var(--sans);font-size:.22em;color:var(--ink-4);font-weight:500;margin-left:10px;letter-spacing:0}
+  .hero .help{font-size:13px;color:var(--ink-3);margin-top:10px}
+  .copyhint{position:absolute;top:14px;right:18px;font-size:10.5px;color:var(--ink-4);opacity:0;transition:.15s;pointer-events:none}
+  .hero.valid:hover .copyhint{opacity:1}
 
-      --shadow: 0 16px 44px rgba(0,0,0,.44);
-      --shadow2: 0 12px 30px rgba(0,0,0,.34);
-    }
+  /* FAVORITES */
+  .fav{margin-top:12px}
+  .fav-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .fav-h .t{font-size:13px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+  .fav-h .t svg{width:14px;height:14px;color:var(--ink-3)}
+  .fav-h .acts{display:flex;gap:7px}
+  .mini-btn{font-size:12px;font-weight:500;display:inline-flex;align-items:center;gap:6px;padding:7px 11px;border-radius:var(--r-sm);cursor:pointer;
+    border:1px solid var(--line);background:var(--surface);color:var(--ink-2);transition:.13s}
+  .mini-btn:hover{border-color:var(--line-strong);color:var(--ink)}
+  .mini-btn.star:hover{color:var(--signal-deep);border-color:color-mix(in srgb,var(--signal) 40%,var(--line))}
+  .mini-btn.del:hover{color:var(--bad);border-color:var(--bad-dim)}
+  .mini-btn svg{width:12px;height:12px}
+  .fav-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:9px}
+  .slot{background:var(--field-bg);border:1px solid var(--line);border-radius:var(--r);padding:11px;
+    cursor:pointer;min-height:80px;display:flex;flex-direction:column;gap:4px;transition:.13s;position:relative;overflow:hidden}
+  .slot.empty{border-style:dashed;border-color:var(--line-strong)}
+  .slot.filled:hover{border-color:var(--line-strong);background:var(--surface-2)}
+  .slot.selected{border-color:var(--signal);box-shadow:0 0 0 1px var(--signal)}
+  .slot .s-mode{font-size:11px;font-weight:700;color:var(--ink-2);letter-spacing:0}
+  .slot.selected .s-mode{color:var(--signal-deep)}
+  .slot .s-vals{font-size:12px;font-weight:400;color:var(--ink-3);line-height:1.5}
+  .slot .s-res{font-family:var(--mono);font-size:17px;font-weight:600;margin-top:auto;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .slot .s-res.valid{color:var(--signal-deep)} .slot .s-res.na{color:var(--bad)}
+  .slot.empty .s-mode{color:var(--ink-4)}
+  .slot.empty .ph{font-size:10px;color:var(--ink-4);display:flex;align-items:center;gap:5px;margin-top:auto}
+  .slot.empty .ph svg{width:11px;height:11px}
+  .slot .x{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:4px;display:none;place-items:center;
+    background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad);border:0;cursor:pointer;font-size:14px;line-height:1}
+  .slot.filled:hover .x{display:grid}
 
-    *{box-sizing:border-box}
-    html{
-      min-height:100%;
-      overflow-x:hidden;
-      overscroll-behavior-x:none;
-      background:
-        radial-gradient(900px 450px at 15% 0%, rgba(49,130,246,.16), transparent 60%),
-        radial-gradient(850px 480px at 85% 10%, rgba(14,165,233,.10), transparent 60%),
-        linear-gradient(180deg, var(--bg2), var(--bg));
-      background-attachment:scroll;
-    }
-    body{
-      min-height:100%;
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-      color:var(--txt);
-      background:transparent;
-      overflow-x:hidden;
-      overscroll-behavior-x:none;
-    }
+  /* ============ HEATMAP ============ */
+  .hm-scroll{position:relative;max-height:210px;overflow:auto;border:1px solid var(--line);border-radius:var(--r);
+    background:var(--surface);overscroll-behavior:contain;
+    scroll-snap-type:both proximity;scroll-padding:34px 0 0 50px;
+    scrollbar-width:thin;scrollbar-color:var(--ink-4) transparent}
+  .hm-scroll::-webkit-scrollbar{width:12px;height:12px}
+  .hm-scroll::-webkit-scrollbar-track{background:var(--bg-soft);border-radius:9px;margin:3px}
+  .hm-scroll::-webkit-scrollbar-thumb{background:var(--ink-4);border-radius:9px;border:3px solid var(--surface);
+    background-clip:padding-box;min-height:34px;min-width:34px}
+  .hm-scroll::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+  .hm-scroll::-webkit-scrollbar-corner{background:transparent}
+  .heatmap{display:grid;gap:2px;padding:2px;width:max-content}
+  .hm-cell{height:32px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;
+    font-weight:500;color:var(--ink);background:var(--surface-2);border:1px solid transparent;border-radius:3px;overflow:hidden;font-variant-numeric:tabular-nums}
+  .hm-cell.val{cursor:pointer;transition:outline .1s;scroll-snap-align:start}
+  .hm-cell.val:hover{outline:2px solid var(--signal);outline-offset:-2px;z-index:4}
+  .hm-cell.hd{background:var(--surface);color:var(--ink-2);font-size:11px;font-weight:600;border-radius:0}
+  .hm-cell.colhd{position:sticky;top:0;z-index:2;border-radius:0}
+  .hm-cell.rowhd{position:sticky;left:0;z-index:2;cursor:pointer;border-radius:0}
+  .hm-cell.rowhd:hover{color:var(--ink);background:var(--surface-2)}
+  .hm-cell.corner{position:sticky;top:0;left:0;z-index:3;color:var(--ink-3);border-radius:0;padding:0;overflow:hidden;
+    background:linear-gradient(to top right,var(--surface) calc(50% - .6px),var(--line-strong) calc(50% - .6px),var(--line-strong) calc(50% + .6px),var(--surface) calc(50% + .6px))}
+  .hm-cell.corner .cc-cyl{position:absolute;top:1px;right:4px;font-size:8px;line-height:1;font-weight:700;color:var(--ink-2)}
+  .hm-cell.corner .cc-sph{position:absolute;bottom:1px;left:3px;font-size:8px;line-height:1;font-weight:700;color:var(--ink-2)}
+  .hm-cell.center{outline:2.5px solid var(--signal);outline-offset:-2.5px;
+    box-shadow:0 0 0 2px var(--surface);z-index:6;font-weight:700}
+  .hm-cell.dash{color:var(--ink-4);background:var(--surface-2)}
+  .hm-empty{text-align:center;padding:30px 12px;color:var(--ink-3);font-size:12px;line-height:1.7}
+  .hm-legend{display:flex;align-items:center;gap:9px;margin-top:13px;font-size:10px;color:var(--ink-3);letter-spacing:.02em}
+  .hm-legend .bar{flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,oklch(.86 .09 232),oklch(.6 .19 260),oklch(.5 .22 288))}
 
-    .shell{
-      min-height: 100%;
-      padding: clamp(14px, 2.2vh, 28px) clamp(14px, 2.2vw, 22px) clamp(18px, 3vh, 34px);
-      display:flex;
-      justify-content:center;
-    }
-    .wrap{
-      width: min(1180px, 100%);
-      display:flex;
-      flex-direction:column;
-      gap: clamp(12px, 1.8vh, 18px);
-    }
+  code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);border:1px solid var(--line);
+    padding:1px 6px;border-radius:4px;color:var(--ink-2)}
 
-    .topbar{
-      display:flex;
-      justify-content:space-between;
-      gap: 12px;
-      flex-wrap:wrap;
-      align-items:flex-end;
-    }
+  /* ============ HISTORY ============ */
+  #histBody{height:206px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent}
+  #histBody::-webkit-scrollbar{width:8px}
+  #histBody::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:6px;border:2px solid var(--surface)}
+  .hist{display:flex;flex-direction:column}
+  .hist-clear{font-size:12px;color:var(--ink-3);background:transparent;border:0;cursor:pointer;transition:.13s}
+  .hist-clear:hover{color:var(--bad)}
+  .hist-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;
+    border-bottom:1px solid var(--line-soft);cursor:pointer;transition:.12s}
+  .hist-row:last-child{border-bottom:0;padding-bottom:0}
+  .hist-row:first-child{padding-top:0}
+  .hist-row:hover .hl{color:var(--ink)}
+  .hist-row .hl{font-size:11.5px;color:var(--ink-3);line-height:1.4;transition:.12s}
+  .hist-row .hl b{color:var(--ink-2);font-weight:600}
+  .hist-row .hr{font-family:var(--mono);font-size:14px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .hist-row .hr.valid{color:var(--signal-deep)} .hist-row .hr.na{color:var(--bad)}
+  .hist-empty{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:20px 12px;color:var(--ink-3);font-size:12px;line-height:1.7}
 
-    .title{
-      display:flex;
-      flex-direction:column;
-      gap: 6px;
-      min-width: 260px;
-    }
-    .title h1{
-      margin:0;
-      font-size: clamp(18px, 2.2vw, 24px);
-      letter-spacing:-.4px;
-      line-height:1.15;
-    }
-    .title p{
-      margin:0;
-      color:var(--muted);
-      font-size: clamp(12px, 1.4vw, 13px);
-      line-height:1.45;
-    }
+  /* ============ FOOTER ============ */
+  footer.foot{border-top:1px solid var(--line);background:var(--surface);margin-top:auto}
+  .foot-in{max-width:1280px;margin:0 auto;padding:11px clamp(16px,3vw,32px);
+    display:flex;align-items:center;justify-content:space-between;gap:6px 24px;flex-wrap:wrap;
+    font-size:11px;color:var(--ink-3)}
+  .foot-in .fl b{color:var(--ink-2);font-weight:600}
+  .foot-in .fr{color:var(--ink-4);display:flex;align-items:center;gap:7px}
+  .foot-in .fr::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--good);opacity:.8}
+  .foot-in code{font-size:.95em;padding:1px 5px}
 
-    .actions{
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
+  /* keyboard hint */
+  .kbd-hint{display:flex;align-items:center;gap:7px;margin-top:8px;font-size:11px;color:var(--ink-4);flex-wrap:wrap}
+  .kbd-hint kbd{font-family:var(--mono);font-size:10px;color:var(--ink-3);background:var(--surface-2);
+    border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 6px;font-weight:500}
 
-    .pill{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding: 10px 12px;
-      border: 1px solid var(--stroke);
-      border-radius: 14px;
-      background: var(--card2);
-      box-shadow: var(--shadow2);
-      max-width: 620px;
-    }
-    .dot{
-      width:10px;height:10px;border-radius:999px;
-      background: rgba(15,23,42,.25);
-      box-shadow: 0 0 0 4px rgba(49,130,246,.10);
-      flex:0 0 auto;
-    }
-    html[data-theme="dark"] .dot{
-      background: rgba(255,255,255,.25);
-    }
-    .dot.ok{ background: var(--good); box-shadow: 0 0 0 4px rgba(16,185,129,.16); }
-    .pilltext{display:flex;flex-direction:column;gap:2px;min-width:0}
-    .pilltext .name{
-      font-size: 13px;
-      font-weight: 950;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      max-width: 360px;
-    }
-    .pilltext .meta{
-      font-size: 12px;
-      color: var(--muted2);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-      max-width: 560px;
-    }
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(16px);
+    background:var(--surface);border:1px solid var(--line-strong);color:var(--ink);
+    font-size:12.5px;font-weight:500;padding:11px 18px;border-radius:var(--r);
+    box-shadow:0 16px 40px -16px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.26s ease;z-index:50;
+    display:flex;align-items:center;gap:9px}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .dot{width:7px;height:7px;border-radius:50%;background:var(--good)}
 
-    .btn{
-      appearance:none;
-      border: 1px solid var(--stroke2);
-      background: var(--card);
-      color: var(--txt);
-      border-radius: 14px;
-      padding: 10px 12px;
-      cursor:pointer;
-      font-weight: 950;
-      font-size: 13px;
-      box-shadow: var(--shadow2);
-      transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
-      display:flex;
-      gap:8px;
-      align-items:center;
-      user-select:none;
-    }
-    .btn:hover{
-      transform: translateY(-1px);
-      border-color: rgba(49,130,246,.35);
-      box-shadow: 0 14px 30px rgba(49,130,246,.10);
-    }
-    .btn:active{ transform: translateY(0) scale(.99); }
-
-    .btn.ghost{
-      background: transparent;
-      box-shadow:none;
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns: 1.15fr .85fr;
-      gap: clamp(10px, 1.6vw, 16px);
-      align-items:stretch;
-    }
-    @media (max-width: 960px){
-      .grid{ grid-template-columns: 1fr; }
-      .pilltext .name{ max-width: 66vw; }
-      .pilltext .meta{ max-width: 78vw; }
-    }
-
-    .card{
-      border-radius: var(--radius);
-      border: 1px solid var(--stroke);
-      background: var(--card);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-    }
-
-    .seg{
-      display:flex;
-      gap: 8px;
-      padding: 12px;
-      border-bottom: 1px solid var(--stroke);
-      background: rgba(49,130,246,.05);
-    }
-    html[data-theme="dark"] .seg{
-      background: rgba(49,130,246,.12);
-    }
-    .seg button{
-      flex:1;
-      border: 1px solid var(--stroke);
-      border-radius: 14px;
-      background: transparent;
-      color: var(--muted2);
-      padding: 11px 10px;
-      cursor:pointer;
-      font-weight: 800;
-      font-size: 13px;
-      opacity: .85;
-      transition: transform .14s ease, background .14s ease, border-color .14s ease, color .14s ease, box-shadow .14s ease, opacity .14s ease;
-    }
-    .seg button:hover:not(.active){
-      background: rgba(49,130,246,.08);
-      color: var(--muted);
-      opacity: 1;
-    }
-    html[data-theme="dark"] .seg button{
-      background: transparent;
-    }
-    .seg button.active{
-      color: #fff;
-      font-weight: 1000;
-      border-color: rgba(49,130,246,.85);
-      background: linear-gradient(180deg, rgba(49,130,246,1), rgba(37,110,225,1));
-      box-shadow: 0 10px 24px rgba(49,130,246,.42), inset 0 0 0 1px rgba(255,255,255,.18);
-      opacity: 1;
-      transform: translateY(-1px);
-    }
-    .seg button:active{ transform: scale(.99); }
-
-    .content{
-      padding: clamp(14px, 2.2vw, 18px);
-      display:grid;
-      gap: 12px;
-    }
-
-    .row{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-    @media (max-width: 560px){
-      .row{ grid-template-columns: 1fr; }
-    }
-
-    label{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 1000;
-    }
-
-    .in{
-      width:100%;
-      border: 1px solid var(--stroke);
-      border-radius: 14px;
-      background: rgba(255,255,255,.92);
-      color: var(--txt);
-      padding: 12px 12px;
-      font-size: 15px;
-      outline:none;
-      transition: border-color .14s ease, box-shadow .14s ease;
-    }
-    html[data-theme="dark"] .in{
-      background: rgba(0,0,0,.24);
-    }
-    .in:focus{
-      border-color: rgba(49,130,246,.65);
-      box-shadow: 0 0 0 4px rgba(49,130,246,.16);
-    }
-
-    .result{
-      border-radius: var(--radius);
-      border: 1px solid var(--stroke);
-      background: rgba(49,130,246,.05);
-      padding: 16px;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      min-height: 176px;
-      justify-content:space-between;
-    }
-    html[data-theme="dark"] .result{
-      background: rgba(49,130,246,.10);
-    }
-    .result .hd{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap: 10px;
-    }
-
-    .badge{
-      font-size: 11px;
-      font-weight: 1100;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--stroke);
-      color: var(--muted);
-      background: rgba(255,255,255,.75);
-      white-space:nowrap;
-      align-self:flex-start;
-    }
-    html[data-theme="dark"] .badge{
-      background: rgba(255,255,255,.06);
-    }
-    .badge.ok{
-      color: rgba(16,185,129,.95);
-      border-color: rgba(16,185,129,.35);
-      background: rgba(16,185,129,.10);
-    }
-    .badge.bad{
-      color: rgba(239,68,68,.95);
-      border-color: rgba(239,68,68,.35);
-      background: rgba(239,68,68,.10);
-    }
-
-    .value{
-      font-size: clamp(32px, 4.8vw, 46px);
-      font-weight: 900;
-      letter-spacing:-.9px;
-      line-height:1.05;
-      display:flex;
-      gap:10px;
-      align-items:baseline;
-    }
-
-    .hint{
-      font-size: 12px;
-      color: var(--muted);
-      line-height:1.5;
-    }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
-
-    .favwrap{
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      margin-top: 4px;
-    }
-    .favtitle{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 1100;
-      flex-wrap:wrap;
-    }
-    .favgrid{
-      display:grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 10px;
-    }
-    @media (max-width: 780px){
-      .favgrid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    }
-    @media (max-width: 460px){
-      .favgrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    .fav{
-      border-radius: 14px;
-      border: 1px solid var(--stroke);
-      background: rgba(255,255,255,.92);
-      padding: 10px 10px;
-      cursor:pointer;
-      transition: transform .14s ease, border-color .14s ease, box-shadow .14s ease;
-      min-height: 66px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      justify-content:center;
-      box-shadow: 0 8px 18px rgba(15,23,42,.06);
-    }
-    html[data-theme="dark"] .fav{
-      background: rgba(0,0,0,.22);
-      box-shadow: 0 10px 22px rgba(0,0,0,.26);
-    }
-    .fav:hover{
-      transform: translateY(-1px);
-      border-color: rgba(49,130,246,.35);
-      box-shadow: 0 12px 26px rgba(49,130,246,.10);
-    }
-    .fav .t{
-      font-size: 12px;
-      font-weight: 900;
-      color: var(--txt);
-      line-height:1.2;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .fav .s{
-      font-size: 11px;
-      color: var(--muted2);
-      font-weight: 950;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .fav{
-      position:relative;
-    }
-    .fav-del{
-      position:absolute;
-      top:6px;
-      right:6px;
-      width:20px;
-      height:20px;
-      border:none;
-      border-radius:50%;
-      background:rgba(239,68,68,.15);
-      color:rgba(239,68,68,.9);
-      font-size:11px;
-      cursor:pointer;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      opacity:0;
-      transition:opacity .14s ease, background .14s ease;
-    }
-    .fav:hover .fav-del{
-      opacity:1;
-    }
-    .fav-del:hover{
-      background:rgba(239,68,68,.25);
-    }
-    .fav.empty{
-      cursor:default;
-      opacity:.60;
-      background: rgba(255,255,255,.70);
-      box-shadow:none;
-    }
-    html[data-theme="dark"] .fav.empty{
-      background: rgba(255,255,255,.06);
-    }
-    .fav.empty:hover{ transform:none; border-color: var(--stroke); box-shadow:none; }
-
-    .sideblock{display:flex;flex-direction:column;gap: 14px;}
-    .sidebox{
-      border-radius: var(--radius);
-      border: 1px solid var(--stroke);
-      background: var(--card);
-      box-shadow: var(--shadow);
-      padding: 16px;
-      display:flex;
-      flex-direction:column;
-      gap: 10px;
-    }
-    .sidebox h3{
-      margin:0;
-      font-size: 13px;
-      letter-spacing:-.2px;
-      font-weight: 900;
-    }
-    .sidebox .small{
-      font-size: 12px;
-      color: var(--muted);
-      line-height:1.55;
-    }
-
-    .toast{
-      position:fixed;
-      left: 50%;
-      bottom: 18px;
-      transform: translateX(-50%);
-      background: rgba(15,23,42,.92);
-      color: white;
-      padding: 10px 12px;
-      border-radius: 14px;
-      box-shadow: 0 12px 28px rgba(0,0,0,.22);
-      font-size: 12px;
-      font-weight: 950;
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .18s ease, transform .18s ease;
-      z-index: 9999;
-      max-width: min(92vw, 740px);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .toast.show{
-      opacity:1;
-      transform: translateX(-50%) translateY(-2px);
-    }
-
-    /* tighter buttons row on small screens */
-    @media (max-width: 520px){
-      .actions{ justify-content:flex-start; }
-      .pill{ width: 100%; max-width: none; }
-      .btn{ flex:1; justify-content:center; }
-    }
-  </style>
+  @media(max-width:1020px){.grid{grid-template-columns:1fr}}
+  @media(max-width:640px){
+    html{font-size:15px}
+    .bar-in{gap:10px}
+    .brand{flex:1 1 100%;order:0}
+    .filechip{order:2;flex:1 1 100%}
+    .bar-actions{order:1;width:100%;flex-wrap:wrap}
+    .bar-actions .btn{flex:1 1 auto;justify-content:center}
+    .meterline{gap:6px 16px}
+    .fields{grid-template-columns:1fr}
+    .fav-grid{grid-template-columns:repeat(3,1fr)}
+    .slot{min-height:80px;padding:10px 9px}
+    .hm-scroll{max-height:46vh}
+    .foot-in{justify-content:flex-start;gap:4px 16px}
+  }
+  @media(max-width:380px){.fav-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
 </head>
-
 <body>
-  <div class="shell">
-    <div class="wrap">
-      <div class="topbar">
-        <div class="title">
-          <h1>절삭량 계산기 <span class="mono" style="opacity:.75">(6.0 / 6.5)</span></h1>
-          <p>
-            엑셀 공식 그대로: <span class="mono">잔여 = 두께 − 표조회 − 100</span><br/>
-            계산은 <b>0.01 단위 정수화</b>로 처리해 표시/연산 오차를 제거합니다.
-          </p>
-        </div>
 
-        <div class="actions">
-          <div class="pill" title="엑셀(xlsx)을 업로드하면 내부 표를 파싱합니다.">
-            <div id="fileDot" class="dot"></div>
-            <div class="pilltext">
-              <div id="fileName" class="name">엑셀 미로드</div>
-              <div id="fileMeta" class="meta">xlsx 업로드를 기다리는 중…</div>
-            </div>
-          </div>
-
-          <button class="btn" id="themeBtn" type="button" aria-label="다크/라이트 모드 전환">
-            <span id="themeIcon">🌙</span><span id="themeText">다크</span>
-          </button>
-
-          <button class="btn" id="pickBtn" type="button" aria-label="엑셀 파일 업로드">
-            <span>📄</span><span>엑셀 업로드</span>
-          </button>
-
-          <button class="btn" id="clearBtn" type="button" aria-label="입력값 전체 초기화">
-            <span>🧽</span><span>Clear</span>
-          </button>
-
-          <input id="fileInput" type="file" accept=".xlsx" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
-        </div>
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <h1>절삭량 계산기</h1>
+        <div class="tag">Cutting Allowance · WFO 6.0 / 6.5</div>
       </div>
-
-      <div class="grid">
-        <!-- Main -->
-        <div class="card">
-          <div class="seg">
-            <button id="tab60" type="button">6.0mm</button>
-            <button id="tab65" class="active" type="button">6.5mm</button>
-          </div>
-
-          <div class="content">
-            <div class="row">
-              <label>
-                Sphere (sph)
-                <input id="inpSph" class="in" placeholder="예: -3.00" autocomplete="off" />
-              </label>
-
-              <label>
-                Cylinder (cyl)
-                <input id="inpCyl" class="in" placeholder="예: -1.00" autocomplete="off" />
-              </label>
-            </div>
-
-            <div class="row">
-              <label>
-                두께
-                <input id="inpThk" class="in" inputmode="decimal" placeholder="예: 550" autocomplete="off" />
-              </label>
-
-              <div class="result" aria-live="polite">
-                <div class="hd">
-                  <div style="display:flex;flex-direction:column;gap:4px;">
-                    <div style="font-size:12px;color:var(--muted);font-weight:900;">결과 (잔여)</div>
-                    <div id="formulaLine" class="mono" style="font-size:12px;color:var(--muted);font-weight:900;">
-                      6.5mm: 두께 − WFO6.5 − 100
-                    </div>
-                  </div>
-                  <span id="statusBadge" class="badge">N/A</span>
-                </div>
-
-                <div class="value">
-                  <span id="outVal">N/A</span>
-                </div>
-
-                <div class="hint" id="hintLine">
-                  엑셀을 업로드한 뒤 sph/cyl/두께를 입력하면 자동 계산됩니다.
-                </div>
-              </div>
-            </div>
-
-            <div class="favwrap">
-              <div class="favtitle">
-                <span>즐겨찾기 (최대 5개)</span>
-                <div style="display:flex;gap:6px;">
-                  <button class="btn ghost" id="addFavBtn" type="button" style="padding:8px 10px;border-radius:12px;font-size:12px;">
-                    ⭐ 등록
-                  </button>
-                  <button class="btn ghost" id="clearFavBtn" type="button" style="padding:8px 10px;border-radius:12px;font-size:12px;">
-                    🧹 삭제
-                  </button>
-                </div>
-              </div>
-              <div class="favgrid" id="favGrid"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Side -->
-        <div class="sideblock">
-          <div class="sidebox">
-            <h3>동작 규칙</h3>
-            <div class="small">
-              • <b class="mono">WFO 6mm</b> / <b class="mono">WFO 6.5mm</b> 시트에서 sph(행), cyl(열)을 <b>정확히 매칭</b>합니다.<br/>
-              • 해당 교차값이 “-”이거나 비어 있으면 <b>N/A</b>가 정상입니다.<br/>
-              • 유효하면 즉시: <b class="mono">두께 − 조회값 − 100</b>
-            </div>
-          </div>
-
-          <div class="sidebox">
-            <h3>브라우저 요구사항</h3>
-            <div class="small">
-              이 페이지는 외부 라이브러리 없이 <b>xlsx(zip+deflate)</b>를 풀기 위해
-              <span class="mono">DecompressionStream</span>을 사용합니다.<br/>
-              Chrome/Edge 권장. 지원이 없으면 안내 메시지가 뜹니다.
-            </div>
-          </div>
-
-          <div class="sidebox">
-            <h3>오차 제거</h3>
-            <div class="small">
-              부동소수점 오차를 막기 위해, 두께/조회값을 <b>×100 정수(0.01단위)</b>로 바꿔 계산 후 다시 표시합니다.
-            </div>
-          </div>
-        </div>
+    </div>
+    <div class="filechip" id="fileChip">
+      <span class="led"></span>
+      <div style="min-width:0">
+        <div class="fname" id="fileName">—</div>
+        <div class="fmeta" id="fileMeta">파일 없음</div>
       </div>
-
+    </div>
+    <div class="bar-actions">
+      <button class="btn icon" id="themeBtn" title="테마 전환" aria-label="테마 전환">
+        <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+      </button>
+      <button class="btn" id="uploadBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><path d="M14 2v6h6"></path><path d="M12 18v-6M9 15l3-3 3 3"></path></svg>
+        엑셀 업로드
+      </button>
+      <button class="btn" id="clearBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg>
+        Clear
+      </button>
+      <input type="file" id="fileInput" accept=".xlsx" hidden="">
     </div>
   </div>
+</header>
 
-  <div id="toast" class="toast"></div>
+<div class="wrap">
 
-  <script>
-    /******************************************************************
-     * XLSX Offline Reader (No external libraries)
-     * - Parses ZIP central directory
-     * - Inflates DEFLATE entries using DecompressionStream('deflate-raw')
-     * - Reads:
-     *    xl/workbook.xml
-     *    xl/_rels/workbook.xml.rels
-     *    xl/sharedStrings.xml (optional)
-     *    xl/worksheets/*.xml
-     *
-     * Then extracts:
-     *   "WFO 6mm", "WFO 6.5mm"
-     *   ranges: sph A3:A51, cyl B2:Z2, data B3:Z51
-     *
-     * EXACT formula:
-     *   residual = thickness - lookup - 100
-     * using centi-integers to eliminate float error.
-     ******************************************************************/
+  <!-- METER LINE (1줄 · 값만) -->
+  <section class="meterline" aria-label="상태 요약">
+    <span class="meter" id="statSheet"><span class="lab">시트</span><b id="vSheet">6.5<small> mm</small></b><em id="nSheet">WFO 6.5mm</em></span>
+    <span class="meter" id="statData"><span class="lab">데이터</span><b id="vData">49<small>×</small>25</b></span>
+    <span class="meter" id="statLookup"><span class="lab">조회</span><b id="vLookup">—</b></span>
+    <span class="meter" id="statFav"><span class="lab">즐겨찾기</span><b id="vFav">0<small>/5</small></b></span>
+  </section>
 
-    const SHEET_60 = "WFO 6mm";
-    const SHEET_65 = "WFO 6.5mm";
+  <!-- MAIN -->
+  <main class="grid">
+    <!-- CONSOLE -->
+    <section class="panel">
+      <div class="panel-h">
+        <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 9h18M8 14h.01M12 14h4"></path></svg>입력 콘솔</div>
+        <div class="meta">잔여 = 두께 − 조회 − 100</div>
+      </div>
+      <div class="panel-body">
+        <div class="seg" role="tablist" aria-label="두께 모드">
+          <button role="tab" data-mode="6.0" aria-selected="false">6.0<span class="lbl">WFO 6mm</span></button>
+          <button role="tab" data-mode="6.5" aria-selected="true">6.5<span class="lbl">WFO 6.5mm</span></button>
+        </div>
 
-    // sph는 행 3부터 시작, 끝은 동적 감지
-    const R_SPH_START = 3;
-    // cyl은 B~Z 고정
-    const C_CYL_START = 2, C_CYL_END = 26;
+        <div class="fields">
+          <div class="field">
+            <label>Sphere <span class="tag">sph · 행</span></label>
+            <div class="inwrap"><input id="inSph" type="text" inputmode="decimal" placeholder="-3.00" autocomplete="off"></div>
+          </div>
+          <div class="field">
+            <label>Cylinder <span class="tag">cyl · 열</span></label>
+            <div class="inwrap"><input id="inCyl" type="text" inputmode="decimal" placeholder="-1.00" autocomplete="off"></div>
+          </div>
+          <div class="field full">
+            <label>Thickness <span class="tag">두께</span></label>
+            <div class="inwrap"><input id="inThk" type="text" inputmode="decimal" placeholder="550" autocomplete="off"></div>
+          </div>
+        </div>
 
-    const OFFSET = 100;
+        <div class="kbd-hint"><kbd>Enter</kbd> 다음 필드 · <kbd>Esc</kbd> 초기화 · 결과 클릭으로 복사</div>
 
-    const ui = {
-      tab60: document.getElementById("tab60"),
-      tab65: document.getElementById("tab65"),
-      inpSph: document.getElementById("inpSph"),
-      inpCyl: document.getElementById("inpCyl"),
-      inpThk: document.getElementById("inpThk"),
-      outVal: document.getElementById("outVal"),
-      statusBadge: document.getElementById("statusBadge"),
-      hintLine: document.getElementById("hintLine"),
-      formulaLine: document.getElementById("formulaLine"),
+        <!-- HERO READOUT -->
+        <div class="hero" id="hero">
+          <div class="hero-top">
+            <span class="ttl">결과 · 잔여</span>
+            <span class="badge na" id="badge"><span class="d"></span><span id="badgeTxt">대기</span></span>
+          </div>
+          <div class="hero-readout">
+            <span class="copyhint">클릭 복사</span>
+            <div class="formula" id="formula">6.5mm: 두께 − <b>WFO6.5</b> − 100</div>
+            <div class="big" id="bigResult">—</div>
+            <div class="help" id="help">sph / cyl / 두께를 입력하세요.</div>
+          </div>
+        </div>
 
-      fileDot: document.getElementById("fileDot"),
-      fileName: document.getElementById("fileName"),
-      fileMeta: document.getElementById("fileMeta"),
+        <!-- FAVORITES -->
+        <div class="fav">
+          <div class="fav-h">
+            <div class="t">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"></path></svg>
+              즐겨찾기 · 최대 5
+            </div>
+            <div class="acts">
+              <button class="mini-btn star" id="favSave">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"></path></svg>
+                현재 등록
+              </button>
+              <button class="mini-btn del" id="favClear">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 4v8m4-8v8"></path></svg>
+                비우기
+              </button>
+            </div>
+          </div>
+          <div class="fav-grid" id="favGrid"></div>
+        </div>
+      </div>
+    </section>
 
-      pickBtn: document.getElementById("pickBtn"),
-      fileInput: document.getElementById("fileInput"),
-      clearBtn: document.getElementById("clearBtn"),
+    <!-- SIDE -->
+    <aside class="side">
+      <!-- HEATMAP -->
+      <div class="panel panel-matrix">
+        <div class="panel-h">
+          <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect></svg>룩업 매트릭스</div>
+          <div class="meta" id="hmMeta">스크롤 · 클릭 적용</div>
+        </div>
+        <div class="panel-body">
+          <div id="hmBody">
+            <div class="hm-empty">sph / cyl 를 입력하면<br>매칭 셀과 주변 값을 표시합니다.</div>
+          </div>
+          <div class="hm-legend" id="hmLegend" style="display:none">
+            <span>LOW</span><span class="bar"></span><span>HIGH</span>
+          </div>
+        </div>
+      </div>
 
-      themeBtn: document.getElementById("themeBtn"),
-      themeIcon: document.getElementById("themeIcon"),
-      themeText: document.getElementById("themeText"),
+      <!-- HISTORY -->
+      <div class="panel">
+        <div class="panel-h">
+          <div class="t"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v4l3 2"></path><circle cx="12" cy="12" r="9"></circle></svg>최근 계산</div>
+          <button class="hist-clear" id="histClear">비우기</button>
+        </div>
+        <div class="panel-body">
+          <div id="histBody"><div class="hist-empty">아직 계산 기록이 없습니다.<br>입력하면 자동으로 쌓입니다.</div></div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</div>
 
-      favGrid: document.getElementById("favGrid"),
-      addFavBtn: document.getElementById("addFavBtn"),
-      clearFavBtn: document.getElementById("clearFavBtn"),
+<footer class="foot">
+  <div class="foot-in">
+    <span class="fl"><b>잔여 = 두께 − 표조회 − 100</b> · ×100 정수 연산으로 부동소수 오차 제거</span>
+    <span class="fr">offline xlsx · <code>DecompressionStream</code> · Chrome / Edge 권장</span>
+  </div>
+</footer>
 
-      toast: document.getElementById("toast"),
-    };
+<div class="toast" id="toast"><span class="dot"></span><span id="toastTxt"></span></div>
 
-    let mode = "6.5"; // "6.0" or "6.5"
 
-    const tables = { "6.0": null, "6.5": null }; // {sphList,cylList,valueMap}
-    const FAV_KEY = "wfo_calc_favs_offline_v1";
-    const THEME_KEY = "wfo_calc_theme_v1";
 
-    function toast(msg){
-      ui.toast.textContent = msg;
-      ui.toast.classList.add("show");
-      clearTimeout(toast._t);
-      toast._t = setTimeout(()=>ui.toast.classList.remove("show"), 1700);
+<script>
+/* ==WFO-ENGINE:START==  index.html의 안전한 XLSX 파서·추출·계산 로직 이식.
+   브라우저와 Node(jsdom) 양쪽에서 동일하게 실행되도록 순수 함수로 유지. */
+const i100   = x => Math.round(x * 100);
+const round2 = x => Math.round(x * 100) / 100;
+const fmt    = v => Number.isInteger(v) ? String(v) : String(round2(v));
+
+const SHEET_60 = "WFO 6mm", SHEET_65 = "WFO 6.5mm";
+const R_SPH_START = 3, C_CYL_START = 2, C_CYL_END = 26, OFFSET = 100;
+
+function numOrNaN(v){
+  if (v === null || v === undefined) return NaN;
+  if (typeof v === "number") return v;
+  const s = String(v).trim();
+  if (!s) return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+function numberToCol(n){
+  let s = "";
+  while (n > 0){ const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+function toKey(sph, cyl){ return sph + "|" + cyl; }
+
+/* ---- ZIP (central directory + deflate-raw) ---- */
+function u16(dv, o){ return dv.getUint16(o, true); }
+function u32(dv, o){ return dv.getUint32(o, true); }
+function findEOCD(buf){
+  const dv = new DataView(buf);
+  for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 0x10000); i--){
+    if (dv.getUint32(i, true) === 0x06054b50) return i;
+  }
+  return -1;
+}
+function parseCentralDirectory(buf){
+  const dv = new DataView(buf);
+  const eocd = findEOCD(buf);
+  if (eocd < 0) throw new Error("ZIP EOCD를 찾지 못했습니다. (xlsx가 손상됐을 수 있음)");
+  const cdSize = u32(dv, eocd + 12);
+  const cdOff  = u32(dv, eocd + 16);
+  let off = cdOff;
+  const files = new Map();
+  while (off < cdOff + cdSize){
+    if (dv.getUint32(off, true) !== 0x02014b50) break;
+    const compMethod = u16(dv, off + 10);
+    const compSize   = u32(dv, off + 20);
+    const uncompSize = u32(dv, off + 24);
+    const nameLen    = u16(dv, off + 28);
+    const extraLen   = u16(dv, off + 30);
+    const cmtLen     = u16(dv, off + 32);
+    const lfhOff     = u32(dv, off + 42);
+    const name = new TextDecoder("utf-8").decode(new Uint8Array(buf, off + 46, nameLen));
+    files.set(name, { compMethod, compSize, uncompSize, lfhOff });
+    off = off + 46 + nameLen + extraLen + cmtLen;
+  }
+  return files;
+}
+function readLocalFileEntry(buf, entry){
+  const dv = new DataView(buf);
+  const off = entry.lfhOff;
+  if (dv.getUint32(off, true) !== 0x04034b50) throw new Error("ZIP Local File Header가 올바르지 않습니다.");
+  const nameLen  = u16(dv, off + 26);
+  const extraLen = u16(dv, off + 28);
+  const dataOff  = off + 30 + nameLen + extraLen;
+  return { compData: new Uint8Array(buf, dataOff, entry.compSize) };
+}
+async function inflateIfNeeded(compMethod, compData){
+  if (compMethod === 0) return compData;
+  if (compMethod !== 8) throw new Error("지원하지 않는 ZIP 압축 방식입니다: " + compMethod);
+  if (typeof DecompressionStream === "undefined") throw new Error("DecompressionStream 미지원 (Chrome/Edge 권장)");
+  const ds = new DecompressionStream("deflate-raw");
+  const stream = new Blob([compData]).stream().pipeThrough(ds);
+  const ab = await new Response(stream).arrayBuffer();
+  return new Uint8Array(ab);
+}
+async function getZipTextFile(buf, files, path){
+  const entry = files.get(path);
+  if (!entry) return null;
+  const { compData } = readLocalFileEntry(buf, entry);
+  const data = await inflateIfNeeded(entry.compMethod, compData);
+  return new TextDecoder("utf-8").decode(data);
+}
+
+/* ---- XML ---- */
+function parseXml(text){
+  const doc = new DOMParser().parseFromString(text, "application/xml");
+  const pe = doc.getElementsByTagName("parsererror")[0];
+  if (pe) throw new Error("XML 파싱 오류: " + pe.textContent);
+  return doc;
+}
+function getSharedStrings(doc){
+  const sst = doc.getElementsByTagName("sst")[0];
+  if (!sst) return [];
+  const sis = Array.from(sst.getElementsByTagName("si"));
+  const out = new Array(sis.length);
+  for (let i = 0; i < sis.length; i++){
+    let s = "";
+    for (const t of Array.from(sis[i].getElementsByTagName("t"))) s += t.textContent ?? "";
+    out[i] = s;
+  }
+  return out;
+}
+function buildWorkbookSheetMap(workbookDoc, relsDoc){
+  const sheetsEl = workbookDoc.getElementsByTagName("sheets")[0];
+  if (!sheetsEl) throw new Error("workbook.xml에서 sheets를 찾지 못했습니다.");
+  const relMap = new Map();
+  for (const r of Array.from(relsDoc.getElementsByTagName("Relationship"))){
+    const id = r.getAttribute("Id"), target = r.getAttribute("Target");
+    if (id && target) relMap.set(id, "xl/" + target.replace(/^\//, ""));
+  }
+  const map = new Map();
+  for (const s of Array.from(sheetsEl.getElementsByTagName("sheet"))){
+    const name = s.getAttribute("name");
+    const rid  = s.getAttribute("r:id")
+      || s.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+    if (!name || !rid) continue;
+    const path = relMap.get(rid);
+    if (path) map.set(name, path);
+  }
+  return map;
+}
+function buildCellMap(sheetDoc, sharedStrings){
+  const map = new Map();
+  for (const c of Array.from(sheetDoc.getElementsByTagName("c"))){
+    const ref = c.getAttribute("r");
+    if (!ref) continue;
+    const t = c.getAttribute("t");
+    const vEl = c.getElementsByTagName("v")[0];
+    const isEl = c.getElementsByTagName("is")[0];
+    let value;
+    if (t === "s"){
+      if (!vEl) continue;
+      value = sharedStrings[parseInt(vEl.textContent || "", 10)] ?? "";
+    } else if (t === "inlineStr"){
+      if (isEl) value = isEl.textContent ?? "";
+    } else {
+      if (!vEl) continue;
+      const raw = (vEl.textContent || "").trim();
+      const n = Number(raw);
+      value = Number.isFinite(n) ? n : raw;
     }
+    map.set(ref, value);
+  }
+  return map;
+}
+function extractTableFromCellMap(cellMap){
+  const sphList = [];
+  for (let r = R_SPH_START; r <= 1000; r++){
+    const n = numOrNaN(cellMap.get(`A${r}`));
+    if (!Number.isFinite(n)) break;
+    sphList.push(n);
+  }
+  if (sphList.length === 0) throw new Error("sph 데이터를 찾지 못했습니다 (A열, 행 3부터)");
+  const cylList = [];
+  for (let c = C_CYL_START; c <= C_CYL_END; c++){
+    const col = numberToCol(c);
+    let v = cellMap.get(`${col}2`);
+    if (typeof v === "string") v = v.trim();
+    const n = numOrNaN(v);
+    if (!Number.isFinite(n)) throw new Error("cyl 범위(B2:Z2)에서 숫자 파싱 실패: " + col + "2");
+    cylList.push(n);
+  }
+  const valueMap = new Map();
+  for (let i = 0; i < sphList.length; i++){
+    for (let j = 0; j < cylList.length; j++){
+      const r = R_SPH_START + i, c = C_CYL_START + j;
+      let v = cellMap.get(`${numberToCol(c)}${r}`);
+      if (typeof v === "string"){ const s = v.trim(); if (s === "-" || s === "") v = undefined; }
+      const n = numOrNaN(v);
+      const k = toKey(sphList[i], cylList[j]);
+      if (!valueMap.has(k)) valueMap.set(k, Number.isFinite(n) ? n : null);
+    }
+  }
+  return { sphList, cylList, valueMap };
+}
 
-    function setFileStatus(ok, name, meta){
-      ui.fileDot.classList.toggle("ok", !!ok);
-      ui.fileName.textContent = name || (ok ? "엑셀 로드됨" : "엑셀 미로드");
-      ui.fileMeta.textContent = meta || "";
+/* ---- index2 UI가 기대하는 grid 형태로 변환 ----
+   g[0] = ['', ...cyl], g[r>=1] = [sph, ...값('-'=결측)] */
+function tableToGrid(t){
+  const g = [["", ...t.cylList.map(c => c.toFixed(2))]];
+  for (const sph of t.sphList){
+    const row = [sph.toFixed(2)];
+    for (const cyl of t.cylList){
+      const v = t.valueMap.get(toKey(sph, cyl));
+      row.push(v === null || v === undefined ? "-" : String(v));
     }
+    g.push(row);
+  }
+  return g;
+}
 
-    function badgeNA(){
-      ui.statusBadge.textContent = "N/A";
-      ui.statusBadge.classList.remove("ok","bad");
-      ui.outVal.textContent = "N/A";
-    }
-    function badgeOK(){
-      ui.statusBadge.textContent = "OK";
-      ui.statusBadge.classList.add("ok");
-      ui.statusBadge.classList.remove("bad");
-    }
-    function badgeBAD(){
-      ui.statusBadge.textContent = "N/A";
-      ui.statusBadge.classList.add("bad");
-      ui.statusBadge.classList.remove("ok");
-    }
+async function parseTables(buf){
+  const files = parseCentralDirectory(buf);
+  const workbookXml = await getZipTextFile(buf, files, "xl/workbook.xml");
+  const relsXml     = await getZipTextFile(buf, files, "xl/_rels/workbook.xml.rels");
+  if (!workbookXml || !relsXml) throw new Error("workbook.xml 또는 workbook.xml.rels를 찾지 못했습니다.");
+  const sharedXml = await getZipTextFile(buf, files, "xl/sharedStrings.xml");
+  const sharedStrings = sharedXml ? getSharedStrings(parseXml(sharedXml)) : [];
+  const sheetMap = buildWorkbookSheetMap(parseXml(workbookXml), parseXml(relsXml));
+  const path60 = sheetMap.get(SHEET_60), path65 = sheetMap.get(SHEET_65);
+  if (!path60 || !path65){
+    throw new Error(`필수 시트("${SHEET_60}", "${SHEET_65}")를 찾지 못했습니다. (발견: ${Array.from(sheetMap.keys()).join(", ")})`);
+  }
+  const xml60 = await getZipTextFile(buf, files, path60);
+  const xml65 = await getZipTextFile(buf, files, path65);
+  if (!xml60 || !xml65) throw new Error("워크시트 XML을 읽지 못했습니다.");
+  const t60 = extractTableFromCellMap(buildCellMap(parseXml(xml60), sharedStrings));
+  const t65 = extractTableFromCellMap(buildCellMap(parseXml(xml65), sharedStrings));
+  return { t60, t65 };
+}
+async function parseXlsx(buf){
+  const { t60, t65 } = await parseTables(buf);
+  return {
+    sheets: { "6.0": tableToGrid(t60), "6.5": tableToGrid(t65) },
+    names:  { "6.0": SHEET_60, "6.5": SHEET_65 },
+    tables: { "6.0": t60, "6.5": t65 },
+  };
+}
 
-    function setMode(next){
-      mode = next;
-      ui.tab60.classList.toggle("active", mode==="6.0");
-      ui.tab65.classList.toggle("active", mode==="6.5");
-      ui.formulaLine.textContent = (mode==="6.0")
-        ? "6.0mm: 두께 − WFO6 − 100"
-        : "6.5mm: 두께 − WFO6.5 − 100";
-      renderFavorites();
-      computeAndRender();
-    }
-    ui.tab60.addEventListener("click", ()=>setMode("6.0"));
-    ui.tab65.addEventListener("click", ()=>setMode("6.5"));
+/* ---- 룩업/계산 (index2 의미 유지, grid 기반 순수 함수) ---- */
+function lookupGrid(g, sph, cyl){
+  if (!g || !g.length) return { state: "nodata" };
+  const header = g[0];
+  let col = -1;
+  for (let i = 0; i < header.length; i++){ const v = parseFloat(header[i]); if (!isNaN(v) && i100(v) === i100(cyl)){ col = i; break; } }
+  let rowIdx = -1;
+  for (let r = 1; r < g.length; r++){ const v = parseFloat(g[r][0]); if (!isNaN(v) && i100(v) === i100(sph)){ rowIdx = r; break; } }
+  if (rowIdx < 0 || col < 1) return { state: "nomatch", rowIdx, col };
+  const raw = (g[rowIdx][col] ?? "").trim();
+  if (raw === "" || raw === "-") return { state: "na", rowIdx, col };
+  const num = parseFloat(raw);
+  if (isNaN(num)) return { state: "na", rowIdx, col };
+  return { state: "ok", value: num, rowIdx, col };
+}
+function residual(thk, value){ return (i100(thk) - i100(value) - i100(OFFSET)) / 100; }
 
-    // =============================
-    // Theme toggle
-    // =============================
-    function applyTheme(theme){
-      document.documentElement.setAttribute("data-theme", theme);
-      localStorage.setItem(THEME_KEY, theme);
-      const isDark = theme === "dark";
-      ui.themeIcon.textContent = isDark ? "☀️" : "🌙";
-      ui.themeText.textContent = isDark ? "라이트" : "다크";
-    }
-    ui.themeBtn.addEventListener("click", ()=>{
-      const cur = document.documentElement.getAttribute("data-theme") || "light";
-      applyTheme(cur === "dark" ? "light" : "dark");
-    });
+;(typeof window !== "undefined" ? window : globalThis).__WFO__ = {
+  parseXlsx, parseTables, extractTableFromCellMap, buildCellMap, tableToGrid,
+  lookupGrid, residual, i100, fmt, round2, numberToCol, toKey, SHEET_60, SHEET_65,
+};
+/* ==WFO-ENGINE:END== */
 
-    // =============================
-    // Float error removal (centi units)
-    // =============================
-    function toCenti(n){ return Math.round(n * 100); }
-    function fromCenti(x){ return x / 100; }
-    function fmt2(n){
-      if (!Number.isFinite(n)) return "N/A";
-      const s = n.toFixed(2);
-      return s.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
-    }
-    function numOrNaN(v){
-      if (v === null || v === undefined) return NaN;
-      if (typeof v === "number") return v;
-      const s = String(v).trim();
-      if (!s) return NaN;
-      const n = Number(s);
-      return Number.isFinite(n) ? n : NaN;
-    }
-    function toKey(sph, cyl){ return `${sph}|${cyl}`; }
+const ENGINE = (typeof window!=="undefined"?window:globalThis).__WFO__;
+/* ============ STATE ============ */
+const FAV_KEY='cut_calc_favs_v2', THEME_KEY='cut_calc_theme', IN_KEY='cut_calc_inputs', MODE_KEY='cut_calc_mode', HIST_KEY='cut_calc_hist';
+const state={ mode:'6.5', data:null, favs:[null,null,null,null,null], selFav:-1, hist:[] };
+const $=id=>document.getElementById(id);
 
-    // =============================
-    // Favorites (수동 등록 방식)
-    // =============================
-    function loadFavStore(){
-      try{
-        const raw = localStorage.getItem(FAV_KEY);
-        if (!raw) return { "6.0": [], "6.5": [] };
-        const obj = JSON.parse(raw);
-        // 배열 형태로 마이그레이션
-        if (!Array.isArray(obj["6.0"])) obj["6.0"] = [];
-        if (!Array.isArray(obj["6.5"])) obj["6.5"] = [];
-        return obj;
-      }catch(_e){
-        return { "6.0": [], "6.5": [] };
+/* ============ LOOKUP + CALC ============ */
+function activeGrid(){ return state.data?.sheets?.[state.mode]||null; }
+function lookup(sph,cyl){ return ENGINE.lookupGrid(activeGrid(),sph,cyl); }
+function compute(){
+  const sphRaw=$('inSph').value.trim(), cylRaw=$('inCyl').value.trim(), thkRaw=$('inThk').value.trim();
+  const sph=parseFloat(sphRaw), cyl=parseFloat(cylRaw), thk=parseFloat(thkRaw);
+  const okSph=sphRaw!==''&&!isNaN(sph), okCyl=cylRaw!==''&&!isNaN(cyl), okThk=thkRaw!==''&&!isNaN(thk);
+  $('inSph').classList.toggle('bad',sphRaw!==''&&isNaN(sph));
+  $('inCyl').classList.toggle('bad',cylRaw!==''&&isNaN(cyl));
+  $('inThk').classList.toggle('bad',thkRaw!==''&&isNaN(thk));
+
+  const hero=$('hero'), badge=$('badge'), big=$('bigResult'), help=$('help');
+  $('formula').innerHTML=`${state.mode}mm: 두께 − <b>WFO${state.mode}</b> − 100`;
+
+  let res={state:'idle'};
+  if(okSph&&okCyl) res=lookup(sph,cyl);
+
+  // stat: lookup value
+  $('vLookup').textContent = res.state==='ok'?fmt(res.value):(res.state==='na'?'N/A':'—');
+  $('statLookup').className='meter'+(res.state==='ok'?' s-good':(res.state==='na'?' s-bad':''));
+
+  renderHeatmap(res, okSph&&okCyl);
+
+  function setHero(cls,badgeCls,badgeTxt,bigTxt,helpTxt){
+    hero.className='hero '+cls; badge.className='badge '+badgeCls; $('badgeTxt').textContent=badgeTxt;
+    big.innerHTML=bigTxt; help.textContent=helpTxt;
+  }
+  if(!okSph||!okCyl||!okThk){ setHero('','na','대기','—','sph / cyl / 두께를 입력하세요.'); return null; }
+  if(res.state==='nodata'){ setHero('na','na','데이터 없음','—','엑셀을 업로드하세요.'); return null; }
+  if(res.state==='nomatch'){ setHero('na','na','매칭 없음','N/A',`표에 sph=${fmt(sph)} / cyl=${fmt(cyl)} 교차가 없습니다.`); return {valid:false}; }
+  if(res.state==='na'){ setHero('na','na','N/A','N/A','해당 교차값이 "-" 또는 비어 있습니다.'); return {valid:false}; }
+  // OK -> integer math
+  const r=ENGINE.residual(thk,res.value);
+  setHero('valid','valid','유효',`${fmt(r)}<small>잔여</small>`,`${fmt(thk)} − ${fmt(res.value)} − 100 = ${fmt(r)}`);
+  return {valid:true,result:r,lookupVal:res.value};
+}
+
+/* ============ HEATMAP (full scrollable matrix) ============ */
+let hmBuiltMode=null;
+function applyCell(sph,cyl){ $('inSph').value=sph; $('inCyl').value=cyl; afterMatrixPick(); }
+function applyRow(sph){ $('inSph').value=sph; afterMatrixPick(); }
+function afterMatrixPick(){ state.selFav=-1; persistInputs(); compute(); renderFavs(); maybeLogHistory(); }
+function centerMatch(sc,cell){
+  if(!sc||!cell) return;
+  sc.scrollTop=Math.max(0,cell.offsetTop-sc.clientHeight/2+cell.offsetHeight/2);
+  sc.scrollLeft=Math.max(0,cell.offsetLeft-sc.clientWidth/2+cell.offsetWidth/2);
+}
+function renderHeatmap(res,active){
+  const body=$('hmBody'), legend=$('hmLegend'), meta=$('hmMeta');
+  const g=activeGrid();
+  if(!g||!g.length){ body.innerHTML='<div class="hm-empty">데이터가 없습니다.<br>엑셀을 업로드하세요.</div>'; legend.style.display='none'; meta.textContent='—'; hmBuiltMode=null; return; }
+  const hasMatch = active && res.rowIdx!=null && res.rowIdx>=1 && res.col!=null && res.col>=1;
+  const sc=$('hmScroll');
+
+  // fast path: grid already built for this sheet — just move highlight + recenter
+  if(sc && hmBuiltMode===state.mode){
+    body.querySelectorAll('.hm-cell.center').forEach(e=>e.classList.remove('center'));
+    if(hasMatch){
+      const cell=body.querySelector(`.hm-cell.val[data-r="${res.rowIdx}"][data-c="${res.col}"]`);
+      if(cell){ cell.classList.add('center'); centerMatch(sc,cell); }
+      meta.textContent=`sph ${(parseFloat(g[res.rowIdx][0])||0).toFixed(2)} · cyl ${(parseFloat(g[0][res.col])||0).toFixed(2)}`;
+    } else meta.textContent='스크롤 · 클릭 적용';
+    return;
+  }
+
+  // full build
+  let mn=Infinity,mx=-Infinity;
+  for(let r=1;r<g.length;r++)for(let c=1;c<g[0].length;c++){const v=parseFloat(g[r][c]);if(!isNaN(v)){if(v<mn)mn=v;if(v>mx)mx=v;}}
+  const span=(mx-mn)||1, ncol=g[0].length-1;
+  const dark=document.documentElement.getAttribute('data-theme')==='dark';
+  let html=`<div class="hm-scroll" id="hmScroll"><div class="heatmap" style="grid-template-columns:48px repeat(${ncol},44px)">`;
+  html+=`<div class="hm-cell corner"><span class="cc-cyl">cyl</span><span class="cc-sph">sph</span></div>`;
+  for(let c=1;c<g[0].length;c++) html+=`<div class="hm-cell hd colhd">${(parseFloat(g[0][c])||0).toFixed(2)}</div>`;
+  for(let r=1;r<g.length;r++){
+    const sphv=(parseFloat(g[r][0])||0).toFixed(2);
+    html+=`<div class="hm-cell hd rowhd" data-sph="${sphv}" title="sph ${sphv} 적용">${sphv}</div>`;
+    for(let c=1;c<g[0].length;c++){
+      const raw=(g[r][c]??'').trim();
+      const num=parseFloat(raw);
+      const cylv=(parseFloat(g[0][c])||0).toFixed(2);
+      let style='',cls='hm-cell val';
+      if(raw===''||raw==='-'||isNaN(num)){ cls='hm-cell val dash'; }
+      else {
+        const t=(num-mn)/span;
+        // 파랑(232) → 보라(288) 다색 sequential 램프 — 저채도 모노톤 대비 색 대비 강화
+        const hue = 232 + t*56;
+        const L = dark ? 0.42+t*0.26 : 0.90-t*0.42;
+        const C = dark ? 0.09+t*0.15 : 0.07+t*0.17;
+        const txt = dark ? '#ffffff' : (t>0.46?'#ffffff':'#20305a');
+        style=`background:oklch(${L} ${C} ${hue});color:${txt}`;
       }
+      if(hasMatch && r===res.rowIdx && c===res.col) cls+=' center';
+      const disp=(raw===''||raw==='-'||isNaN(num))?'-':num.toFixed(0);
+      const tip=`sph ${sphv} · cyl ${cylv}${disp!=='-'?' → '+num.toFixed(2):''}`;
+      html+=`<div class="${cls}" data-sph="${sphv}" data-cyl="${cylv}" data-r="${r}" data-c="${c}" style="${style}" title="${tip}">${disp}</div>`;
     }
-    function saveFavStore(store){
-      localStorage.setItem(FAV_KEY, JSON.stringify(store));
+  }
+  html+='</div></div>';
+  body.innerHTML=html; legend.style.display='flex'; hmBuiltMode=state.mode;
+  meta.textContent = hasMatch ? `sph ${(parseFloat(g[res.rowIdx][0])||0).toFixed(2)} · cyl ${(parseFloat(g[0][res.col])||0).toFixed(2)}` : '스크롤 · 클릭 적용';
+  body.querySelectorAll('.hm-cell.val').forEach(el=>el.addEventListener('click',()=>applyCell(el.dataset.sph,el.dataset.cyl)));
+  body.querySelectorAll('.hm-cell.rowhd').forEach(el=>el.addEventListener('click',()=>applyRow(el.dataset.sph)));
+  if(hasMatch){ const cell=body.querySelector('.hm-cell.center'); centerMatch($('hmScroll'),cell); }
+}
+
+/* ============ FAVORITES ============ */
+function renderFavs(){
+  const grid=$('favGrid'); grid.innerHTML='';
+  let used=0;
+  state.favs.forEach((f,i)=>{
+    const el=document.createElement('div');
+    if(f){
+      used++;
+      el.className='slot filled'+(state.selFav===i?' selected':'');
+      const rcls=f.valid?'valid':'na';
+      el.innerHTML=`<button class="x" data-x="${i}">×</button>
+        <div class="s-mode">${f.mode}mm</div>
+        <div class="s-vals">sph ${f.sph} · cyl ${f.cyl}<br>두께 ${f.thk}</div>
+        <div class="s-res ${rcls}">${f.valid?f.result:'N/A'}</div>`;
+      el.addEventListener('click',e=>{ if(e.target.dataset.x!=null)return; applyFav(i); });
+    } else {
+      el.className='slot empty';
+      el.innerHTML=`<div class="s-mode">빈 슬롯</div>
+        <div class="ph"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17.8 5.9 20.4l1.5-6.8L2.2 9l6.9-.7z"/></svg>현재 등록</div>`;
+      el.addEventListener('click',()=>{ if(saveFav(i)) {} });
     }
-    function addFavorite(){
-      const sph = ui.inpSph.value.trim();
-      const cyl = ui.inpCyl.value.trim();
-      const thk = ui.inpThk.value.trim();
-      if (!sph || !cyl || !thk){
-        toast("sph, cyl, 두께를 모두 입력하세요");
-        return;
-      }
-
-      const store = loadFavStore();
-      const k = `${sph}|${cyl}|${thk}`;
-      
-      // 이미 존재하면 제거 후 맨 앞에 추가
-      const idx = store[mode].indexOf(k);
-      if (idx !== -1) store[mode].splice(idx, 1);
-      
-      // 맨 앞에 추가
-      store[mode].unshift(k);
-      
-      // 최대 5개 유지
-      if (store[mode].length > 5) store[mode] = store[mode].slice(0, 5);
-      
-      saveFavStore(store);
-      renderFavorites();
-      toast("즐겨찾기에 등록되었습니다");
-    }
-    function removeFavorite(index){
-      const store = loadFavStore();
-      store[mode].splice(index, 1);
-      saveFavStore(store);
-      renderFavorites();
-      toast("즐겨찾기에서 삭제되었습니다");
-    }
-    function getFavorites(){
-      const store = loadFavStore();
-      return (store[mode] || []).map(k => {
-        const [sph, cyl, thk] = k.split("|");
-        return { sph, cyl, thk };
-      });
-    }
-    function escapeHtml(s){
-      return String(s)
-        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
-    }
-    function renderFavorites(){
-      ui.favGrid.innerHTML = "";
-      const favs = getFavorites();
-      const slots = 5;
-
-      for (let i=0;i<slots;i++){
-        const f = favs[i];
-        const el = document.createElement("div");
-        el.className = "fav" + (f ? "" : " empty");
-
-        if (!f){
-          el.innerHTML = `<div class="t">빈 슬롯</div><div class="s">⭐ 버튼으로 등록하세요</div>`;
-          ui.favGrid.appendChild(el);
-          continue;
-        }
-
-        el.innerHTML = `
-          <div class="t">sph ${escapeHtml(f.sph)} / cyl ${escapeHtml(f.cyl)}</div>
-          <div class="s">두께 ${escapeHtml(f.thk)}</div>
-          <button class="fav-del" data-idx="${i}" type="button" title="삭제">✕</button>
-        `;
-        el.addEventListener("click", (e)=>{
-          if (e.target.classList.contains("fav-del")) return;
-          ui.inpSph.value = f.sph;
-          ui.inpCyl.value = f.cyl;
-          ui.inpThk.value = f.thk;
-          computeAndRender();
-        });
-        el.querySelector(".fav-del").addEventListener("click", (e)=>{
-          e.stopPropagation();
-          removeFavorite(i);
-        });
-        ui.favGrid.appendChild(el);
-      }
-    }
-    ui.addFavBtn.addEventListener("click", addFavorite);
-    ui.clearFavBtn.addEventListener("click", ()=>{
-      const store = loadFavStore();
-      store[mode] = [];
-      saveFavStore(store);
-      renderFavorites();
-      toast("즐겨찾기를 모두 삭제했습니다");
-    });
-
-    // =============================
-    // Clear all inputs button
-    // =============================
-    ui.clearBtn.addEventListener("click", ()=>{
-      ui.inpSph.value = "";
-      ui.inpCyl.value = "";
-      ui.inpThk.value = "";
-      badgeNA();
-      ui.hintLine.textContent = "입력값을 모두 초기화했습니다.";
-      toast("Clear 완료");
-    });
-
-    function findExactInList(list, input){
-      const n = numOrNaN(input);
-      if (!Number.isFinite(n)) return null;
-      // 부동소수점 비교: 0.001 이내면 동일값으로 간주
-      const EPS = 0.001;
-      for (const v of list){
-        if (Math.abs(v - n) < EPS) return v;
-      }
-      return null;
-    }
-
-    // =============================
-    // Compute
-    // =============================
-    function computeAndRender(){
-      const t = tables[mode];
-      if (!t){
-        badgeNA();
-        ui.hintLine.textContent = "엑셀을 업로드하면 자동 계산됩니다.";
-        renderFavorites();
-        return;
-      }
-
-      const sphIn = ui.inpSph.value.trim();
-      const cylIn = ui.inpCyl.value.trim();
-      const thkIn = ui.inpThk.value.trim();
-
-      if (!sphIn || !cylIn || !thkIn){
-        badgeNA();
-        ui.hintLine.textContent = "sph / cyl / 두께를 입력하세요.";
-        return;
-      }
-
-      const sph = findExactInList(t.sphList, sphIn);
-      const cyl = findExactInList(t.cylList, cylIn);
-      const thk = numOrNaN(thkIn);
-
-      if (sph === null || cyl === null || !Number.isFinite(thk)){
-        badgeBAD();
-        ui.outVal.textContent = "N/A";
-        ui.hintLine.textContent = "표에 있는 정확한 sph/cyl 값 + 숫자 두께를 입력하세요.";
-        return;
-      }
-
-      const lookup = t.valueMap.get(toKey(sph, cyl));
-      if (lookup === null || lookup === undefined){
-        badgeBAD();
-        ui.outVal.textContent = "N/A";
-        ui.hintLine.textContent = "해당 sph/cyl 조합의 표 값이 '-'이거나 비어 있습니다.";
-        return;
-      }
-
-      // exact math in centi-units:
-      const thkC = toCenti(thk);
-      const lookC = toCenti(lookup);
-      const resC = thkC - lookC - OFFSET * 100;
-      const res = fromCenti(resC);
-
-      badgeOK();
-      ui.outVal.textContent = fmt2(res);
-      ui.hintLine.textContent =
-        `조회값=${fmt2(lookup)} → ${fmt2(thk)} − ${fmt2(lookup)} − ${OFFSET} = ${fmt2(res)}`;
-    }
-
-    ["input","change","keyup"].forEach(ev=>{
-      ui.inpSph.addEventListener(ev, computeAndRender);
-      ui.inpCyl.addEventListener(ev, computeAndRender);
-      ui.inpThk.addEventListener(ev, computeAndRender);
-    });
-
-    // =============================
-    // XLSX Reader (ZIP + XML)
-    // =============================
-
-    // --- A1 helpers ---
-    function colToNumber(col){
-      // A -> 1
-      let n = 0;
-      for (let i=0;i<col.length;i++){
-        const c = col.charCodeAt(i);
-        n = n*26 + (c - 64);
-      }
-      return n;
-    }
-
-    // --- ZIP parsing (central directory) ---
-    function u16(dv, o){ return dv.getUint16(o, true); }
-    function u32(dv, o){ return dv.getUint32(o, true); }
-
-    function findEOCD(buf){
-      // EOCD signature 0x06054b50
-      const dv = new DataView(buf);
-      for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 0x10000); i--){
-        if (dv.getUint32(i, true) === 0x06054b50) return i;
-      }
-      return -1;
-    }
-
-    function parseCentralDirectory(buf){
-      const dv = new DataView(buf);
-      const eocd = findEOCD(buf);
-      if (eocd < 0) throw new Error("ZIP EOCD를 찾지 못했습니다. (xlsx가 손상됐을 수 있음)");
-
-      const cdSize = u32(dv, eocd + 12);
-      const cdOff  = u32(dv, eocd + 16);
-
-      let off = cdOff;
-      const files = new Map();
-
-      while (off < cdOff + cdSize){
-        const sig = dv.getUint32(off, true);
-        if (sig !== 0x02014b50) break;
-
-        const compMethod = u16(dv, off + 10);
-        const compSize   = u32(dv, off + 20);
-        const uncompSize = u32(dv, off + 24);
-        const nameLen    = u16(dv, off + 28);
-        const extraLen   = u16(dv, off + 30);
-        const cmtLen     = u16(dv, off + 32);
-        const lfhOff     = u32(dv, off + 42);
-
-        const nameBytes = new Uint8Array(buf, off + 46, nameLen);
-        const name = new TextDecoder("utf-8").decode(nameBytes);
-
-        files.set(name, { compMethod, compSize, uncompSize, lfhOff });
-
-        off = off + 46 + nameLen + extraLen + cmtLen;
-      }
-      return files;
-    }
-
-    function readLocalFileEntry(buf, entry){
-      const dv = new DataView(buf);
-      const off = entry.lfhOff;
-      if (dv.getUint32(off, true) !== 0x04034b50) {
-        throw new Error("ZIP Local File Header가 올바르지 않습니다.");
-      }
-      const nameLen  = u16(dv, off + 26);
-      const extraLen = u16(dv, off + 28);
-      const dataOff  = off + 30 + nameLen + extraLen;
-      const compData = new Uint8Array(buf, dataOff, entry.compSize);
-      return { compData };
-    }
-
-    async function inflateIfNeeded(compMethod, compData){
-      if (compMethod === 0) {
-        return compData; // stored
-      }
-      if (compMethod !== 8) {
-        throw new Error("지원하지 않는 ZIP 압축 방식입니다: " + compMethod);
-      }
-      if (typeof DecompressionStream === "undefined") {
-        throw new Error("이 브라우저는 DecompressionStream을 지원하지 않습니다. (Chrome/Edge 권장)");
-      }
-      const ds = new DecompressionStream("deflate-raw");
-      const stream = new Blob([compData]).stream().pipeThrough(ds);
-      const ab = await new Response(stream).arrayBuffer();
-      return new Uint8Array(ab);
-    }
-
-    async function getZipTextFile(buf, files, path){
-      const entry = files.get(path);
-      if (!entry) return null;
-      const { compData } = readLocalFileEntry(buf, entry);
-      const data = await inflateIfNeeded(entry.compMethod, compData);
-      return new TextDecoder("utf-8").decode(data);
-    }
-
-    function parseXml(text){
-      const doc = new DOMParser().parseFromString(text, "application/xml");
-      const pe = doc.getElementsByTagName("parsererror")[0];
-      if (pe) throw new Error("XML 파싱 오류: " + pe.textContent);
-      return doc;
-    }
-
-    function getSharedStrings(doc){
-      // sharedStrings.xml: <sst><si>...</si></sst>
-      const sst = doc.getElementsByTagName("sst")[0];
-      if (!sst) return [];
-      const sis = Array.from(sst.getElementsByTagName("si"));
-      const out = new Array(sis.length);
-      for (let i=0;i<sis.length;i++){
-        const si = sis[i];
-        // Can be <t> or rich <r><t>
-        const ts = si.getElementsByTagName("t");
-        let s = "";
-        for (const t of Array.from(ts)){
-          s += t.textContent ?? "";
-        }
-        out[i] = s;
-      }
-      return out;
-    }
-
-    function buildWorkbookSheetMap(workbookDoc, relsDoc){
-      // workbook.xml: <sheets><sheet name="" r:id="rId1" />
-      const sheetsEl = workbookDoc.getElementsByTagName("sheets")[0];
-      if (!sheetsEl) throw new Error("workbook.xml에서 sheets를 찾지 못했습니다.");
-
-      const relMap = new Map();
-      // workbook.xml.rels: <Relationship Id="rId1" Target="worksheets/sheet1.xml" />
-      const rels = Array.from(relsDoc.getElementsByTagName("Relationship"));
-      for (const r of rels){
-        const id = r.getAttribute("Id");
-        const target = r.getAttribute("Target");
-        if (id && target) relMap.set(id, "xl/" + target.replace(/^\//,""));
-      }
-
-      const sheetNodes = Array.from(sheetsEl.getElementsByTagName("sheet"));
-      const map = new Map(); // sheetName -> worksheetPath
-      for (const s of sheetNodes){
-        const name = s.getAttribute("name");
-        const rid = s.getAttribute("r:id");
-        if (!name || !rid) continue;
-        const path = relMap.get(rid);
-        if (path) map.set(name, path);
-      }
-      return map;
-    }
-
-    function buildCellMap(sheetDoc, sharedStrings){
-      // Build Map<A1, value> from <sheetData><row><c r="A1" t="s"><v>0</v></c>
-      const map = new Map();
-      const cells = Array.from(sheetDoc.getElementsByTagName("c"));
-      for (const c of cells){
-        const ref = c.getAttribute("r");
-        if (!ref) continue;
-
-        const t = c.getAttribute("t"); // "s" for shared string
-        const vEl = c.getElementsByTagName("v")[0];
-        const isEl = c.getElementsByTagName("is")[0]; // inline string sometimes
-
-        let value = undefined;
-
-        if (t === "s"){
-          if (!vEl) continue;
-          const idx = parseInt(vEl.textContent || "", 10);
-          value = sharedStrings[idx] ?? "";
-        } else if (t === "inlineStr"){
-          if (isEl) value = isEl.textContent ?? "";
-        } else {
-          if (!vEl) continue;
-          const raw = (vEl.textContent || "").trim();
-          // treat as number if numeric
-          const n = Number(raw);
-          value = Number.isFinite(n) ? n : raw;
-        }
-
-        map.set(ref, value);
-      }
-      return map;
-    }
-
-    function extractTableFromCellMap(cellMap){
-      // sph: A열에서 행 3부터 숫자가 있는 동안 동적으로 읽기
-      const sphList = [];
-      for (let r = R_SPH_START; r <= 200; r++){  // 최대 200행까지 탐색
-        const v = cellMap.get(`A${r}`);
-        const n = numOrNaN(v);
-        if (!Number.isFinite(n)) break;  // 숫자가 아니면 종료
-        sphList.push(n);
-      }
-      
-      if (sphList.length === 0) {
-        throw new Error("sph 데이터를 찾지 못했습니다 (A열, 행 3부터)");
-      }
-      
-      const R_SPH_END = R_SPH_START + sphList.length - 1;
-
-      // cyl B2:Z2 => columns 2..26
-      const cylList = [];
-      for (let c=C_CYL_START; c<=C_CYL_END; c++){
-        const col = numberToCol(c);
-        let v = cellMap.get(`${col}2`);
-        if (typeof v === "string") v = v.trim();
-        const n = numOrNaN(v);
-        if (!Number.isFinite(n)) throw new Error("cyl 범위(B2:Z2)에서 숫자 파싱 실패: " + col + "2");
-        cylList.push(n);
-      }
-
-      // data: sph 행 범위 x cyl 열 범위
-      const valueMap = new Map();
-      for (let i=0;i<sphList.length;i++){
-        for (let j=0;j<cylList.length;j++){
-          const r = R_SPH_START + i;
-          const c = C_CYL_START + j;
-          const col = numberToCol(c);
-          let v = cellMap.get(`${col}${r}`);
-
-          if (typeof v === "string"){
-            const s = v.trim();
-            if (s === "-" || s === "") v = undefined;
-          }
-
-          const n = numOrNaN(v);
-          const val = Number.isFinite(n) ? n : null;
-          const k = toKey(sphList[i], cylList[j]);
-          if (!valueMap.has(k)) valueMap.set(k, val);
-        }
-      }
-
-      return { sphList, cylList, valueMap };
-    }
-
-    function numberToCol(n){
-      // 1->A
-      let s = "";
-      while (n > 0){
-        const r = (n - 1) % 26;
-        s = String.fromCharCode(65 + r) + s;
-        n = Math.floor((n - 1) / 26);
-      }
-      return s;
-    }
-
-    async function parseXlsx(arrayBuffer){
-      const buf = arrayBuffer;
-      const files = parseCentralDirectory(buf);
-
-      const workbookXml = await getZipTextFile(buf, files, "xl/workbook.xml");
-      const relsXml     = await getZipTextFile(buf, files, "xl/_rels/workbook.xml.rels");
-      if (!workbookXml || !relsXml) throw new Error("workbook.xml 또는 workbook.xml.rels를 찾지 못했습니다.");
-
-      const sharedXml   = await getZipTextFile(buf, files, "xl/sharedStrings.xml");
-      const sharedStrings = sharedXml ? getSharedStrings(parseXml(sharedXml)) : [];
-
-      const wbDoc = parseXml(workbookXml);
-      const relDoc = parseXml(relsXml);
-      const sheetMap = buildWorkbookSheetMap(wbDoc, relDoc);
-
-      const path60 = sheetMap.get(SHEET_60);
-      const path65 = sheetMap.get(SHEET_65);
-      if (!path60 || !path65){
-        const names = Array.from(sheetMap.keys()).join(", ");
-        throw new Error(`필수 시트("${SHEET_60}", "${SHEET_65}")를 찾지 못했습니다. (발견된 시트: ${names})`);
-      }
-
-      const sheet60Xml = await getZipTextFile(buf, files, path60);
-      const sheet65Xml = await getZipTextFile(buf, files, path65);
-      if (!sheet60Xml || !sheet65Xml) throw new Error("워크시트 XML을 읽지 못했습니다.");
-
-      const s60Doc = parseXml(sheet60Xml);
-      const s65Doc = parseXml(sheet65Xml);
-
-      const cell60 = buildCellMap(s60Doc, sharedStrings);
-      const cell65 = buildCellMap(s65Doc, sharedStrings);
-
-      const t60 = extractTableFromCellMap(cell60);
-      const t65 = extractTableFromCellMap(cell65);
-
-      return { t60, t65 };
-    }
-
-    // =============================
-    // File upload
-    // =============================
-    ui.pickBtn.addEventListener("click", ()=>{
-      ui.fileInput.value = ""; // allow re-upload same file
-      ui.fileInput.click();
-    });
-
-    ui.fileInput.addEventListener("change", async (e)=>{
-      const f = e.target.files && e.target.files[0];
-      if (!f) return;
-
-      if (!/\.xlsx$/i.test(f.name)){
-        toast("xlsx 파일만 지원합니다.");
-        return;
-      }
-
-      setFileStatus(false, "로딩 중…", "xlsx를 파싱하고 있습니다. 잠시만…");
-
-      try{
-        const buf = await f.arrayBuffer();
-        const { t60, t65 } = await parseXlsx(buf);
-
-        tables["6.0"] = t60;
-        tables["6.5"] = t65;
-
-        setFileStatus(true, f.name, `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`);
-        toast("엑셀 로드 완료");
-
-        computeAndRender();
-      }catch(err){
-        console.error(err);
-        tables["6.0"] = null;
-        tables["6.5"] = null;
-
-        setFileStatus(false, "엑셀 로드 실패", String(err.message || err));
-        badgeNA();
-        ui.hintLine.textContent = "엑셀을 다시 업로드해 주세요.";
-        toast("엑셀 로드 실패");
-      }
-    });
-
-    // =============================
-    // Init
-    // =============================
-    (function init(){
-      // theme
-      const savedTheme = localStorage.getItem(THEME_KEY);
-      if (savedTheme === "dark" || savedTheme === "light"){
-        applyTheme(savedTheme);
-      } else {
-        // default: system preference
-        const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-        applyTheme(prefersDark ? "dark" : "light");
-      }
-
-      // initial mode
-      setMode("6.5");
-
-      // initial favorites + UI
-      renderFavorites();
-      badgeNA();
-
-      // capability check
-      if (typeof DecompressionStream === "undefined"){
-        setFileStatus(false, "브라우저 미지원", "DecompressionStream 미지원: Chrome/Edge 권장");
-        ui.hintLine.textContent = "이 브라우저에서는 xlsx(zip) 해제가 불가능합니다. Chrome/Edge로 열어주세요.";
-      } else {
-        loadBundledXlsx();
-      }
-    })();
-
-    async function loadBundledXlsx() {
-  try {
-    setFileStatus(false, "로딩 중…", "서버의 data_2026_06_23.xlsx를 불러오는 중");
-
-    const res = await fetch("./data_2026_06_23.xlsx");
-    if (!res.ok) {
-      throw new Error("data_2026_06_23.xlsx를 불러오지 못했습니다");
-    }
-
-    const buf = await res.arrayBuffer();
-    const { t60, t65 } = await parseXlsx(buf);
-
-    tables["6.0"] = t60;
-    tables["6.5"] = t65;
-
-    setFileStatus(
-      true,
-      "data_2026_06_23.xlsx",
-      `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`
-    );
-
-    computeAndRender();
-    toast("엑셀 자동 로드 완료");
-  } catch (e) {
+    grid.appendChild(el);
+  });
+  grid.querySelectorAll('[data-x]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();delFav(+b.dataset.x);}));
+  $('vFav').innerHTML=`${used}<small>/5</small>`;
+}
+function currentSnapshot(){
+  const c=compute(); if(!c) return null;
+  const sph=$('inSph').value.trim(),cyl=$('inCyl').value.trim(),thk=$('inThk').value.trim();
+  if(!sph||!cyl||!thk) return null;
+  return {mode:state.mode,sph,cyl,thk,valid:c.valid,result:c.valid?fmt(c.result):'N/A'};
+}
+function saveFav(slot){
+  const snap=currentSnapshot();
+  if(!snap){ toast('입력을 완료한 뒤 등록하세요',true); return false; }
+  if(slot==null){ slot=state.favs.findIndex(f=>!f); if(slot<0){ toast('슬롯이 가득 찼습니다',true); return false; } }
+  state.favs[slot]=snap; state.selFav=slot; persistFavs(); renderFavs();
+  toast('즐겨찾기에 등록했습니다'); return true;
+}
+function applyFav(i){
+  const f=state.favs[i]; if(!f)return;
+  setMode(f.mode); $('inSph').value=f.sph; $('inCyl').value=f.cyl; $('inThk').value=f.thk;
+  state.selFav=i; persistInputs(); compute(); renderFavs();
+}
+function delFav(i){ state.favs[i]=null; if(state.selFav===i)state.selFav=-1; persistFavs(); renderFavs(); }
+function clearFavs(){ state.favs=[null,null,null,null,null]; state.selFav=-1; persistFavs(); renderFavs(); toast('즐겨찾기를 비웠습니다'); }
+function persistFavs(){ localStorage.setItem(FAV_KEY,JSON.stringify(state.favs)); }
+
+/* ============ HISTORY ============ */
+let histT;
+function maybeLogHistory(){
+  clearTimeout(histT);
+  histT=setTimeout(()=>{
+    const c=currentSnapshot(); if(!c) return;
+    const key=`${c.mode}|${c.sph}|${c.cyl}|${c.thk}`;
+    if(state.hist[0]&&state.hist[0].key===key) return;
+    state.hist.unshift({...c,key});
+    state.hist=state.hist.slice(0,8);
+    persistHist(); renderHistory();
+  },1000);
+}
+function renderHistory(){
+  const body=$('histBody');
+  if(!state.hist.length){ body.innerHTML='<div class="hist-empty">아직 계산 기록이 없습니다.<br>입력하면 자동으로 쌓입니다.</div>'; return; }
+  body.innerHTML='<div class="hist">'+state.hist.map((h,i)=>
+    `<div class="hist-row" data-h="${i}">
+      <div class="hl"><b>${h.mode}mm</b> · sph ${h.sph} · cyl ${h.cyl} · 두께 ${h.thk}</div>
+      <div class="hr ${h.valid?'valid':'na'}">${h.valid?h.result:'N/A'}</div>
+    </div>`).join('')+'</div>';
+  body.querySelectorAll('[data-h]').forEach(el=>el.addEventListener('click',()=>applyHist(+el.dataset.h)));
+}
+function applyHist(i){
+  const h=state.hist[i]; if(!h)return;
+  setMode(h.mode); $('inSph').value=h.sph; $('inCyl').value=h.cyl; $('inThk').value=h.thk;
+  state.selFav=-1; persistInputs(); compute(); renderFavs();
+}
+function persistHist(){ localStorage.setItem(HIST_KEY,JSON.stringify(state.hist)); }
+function clearHist(){ state.hist=[]; persistHist(); renderHistory(); toast('최근 계산을 비우었습니다'); }
+
+/* ============ COPY RESULT ============ */
+function copyResult(){
+  if(!$('hero').classList.contains('valid')) return;
+  const txt=($('bigResult').textContent||'').replace(/잔여/,'').trim();
+  navigator.clipboard?.writeText(txt).then(()=>toast(`복사됨 · ${txt}`)).catch(()=>{});
+}
+
+/* ============ MODE / THEME / FILE ============ */
+function setMode(m){
+  state.mode=m;
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-selected',b.dataset.mode===m));
+  $('vSheet').innerHTML=`${m}<small> mm</small>`;
+  $('nSheet').textContent=state.data?.names?.[m]||`WFO ${m}mm`;
+  localStorage.setItem(MODE_KEY,m); compute();
+}
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme',t);
+  $('themeIcon').innerHTML = t==='light'
+    ? '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M4.2 4.2l1.8 1.8M18 18l1.8 1.8M2 12h2.5M19.5 12H22M4.2 19.8l1.8-1.8M18 6l1.8-1.8"/>'
+    : '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
+  localStorage.setItem(THEME_KEY,t);
+  hmBuiltMode=null; compute();   // 히트맵 색 램프를 새 테마로 재빌드
+}
+function setData(d){
+  state.data=d; hmBuiltMode=null;
+  const fc=$('fileChip');
+  if(d){
+    fc.classList.remove('empty');
+    $('fileName').textContent=d.fileName;
+    const g60=d.sheets['6.0'], g=g60||d.sheets['6.5'];
+    const rows=g?g.length-1:0, cols=g?g[0].length-1:0;
+    const names=d.names?`"${d.names['6.0']}", "${d.names['6.5']}"`:'WFO 6mm, WFO 6.5mm';
+    $('fileMeta').textContent=`시트 ${names} · sph ${rows} · cyl ${cols}`;
+    $('vData').innerHTML=`${rows}<small>×</small>${cols}`;
+    if(d.demo) $('fileMeta').textContent='데모 데이터 · 실제 xlsx를 업로드하세요';
+  } else {
+    fc.classList.add('empty');
+    $('fileName').textContent='엑셀 미로드';
+    $('fileMeta').textContent='data_2026_06_23.xlsx 대기 · 우측 상단에서 업로드';
+    $('vData').innerHTML='—';
+  }
+  $('nSheet').textContent=d?.names?.[state.mode]||`WFO ${state.mode}mm`;
+  compute();
+}
+
+/* ============ PERSIST INPUTS ============ */
+function persistInputs(){
+  localStorage.setItem(IN_KEY,JSON.stringify({sph:$('inSph').value,cyl:$('inCyl').value,thk:$('inThk').value}));
+}
+
+/* ============ TOAST ============ */
+let toastT;
+function toast(msg,warn){
+  const t=$('toast'); $('toastTxt').textContent=msg;
+  t.querySelector('.dot').style.background=warn?'var(--bad)':'var(--signal)';
+  t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+/* ============ WIRING ============ */
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+['inSph','inCyl','inThk'].forEach(id=>$(id).addEventListener('input',()=>{state.selFav=-1;persistInputs();compute();renderFavs();maybeLogHistory();}));
+$('histClear').addEventListener('click',clearHist);
+$('bigResult').addEventListener('click',copyResult);
+// keyboard-first flow
+const order=['inSph','inCyl','inThk'];
+order.forEach((id,idx)=>{
+  $(id).addEventListener('keydown',e=>{
+    if(e.key==='Enter'){ e.preventDefault(); const nx=$(order[idx+1]); if(nx){nx.focus();nx.select();} else { $(id).blur(); maybeLogHistory(); } }
+    else if(e.key==='Escape'){ e.preventDefault(); $('clearBtn').click(); }
+  });
+});
+$('themeBtn').addEventListener('click',()=>setTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light'));
+$('favSave').addEventListener('click',()=>saveFav(null));
+$('favClear').addEventListener('click',clearFavs);
+$('uploadBtn').addEventListener('click',()=>$('fileInput').click());
+$('clearBtn').addEventListener('click',()=>{ $('inSph').value='';$('inCyl').value='';$('inThk').value='';state.selFav=-1;persistInputs();compute();renderFavs();toast('입력을 초기화했습니다'); });
+$('fileInput').addEventListener('change',async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{
+    toast('파일 분석 중…');
+    const parsed=await parseXlsx(await f.arrayBuffer());
+    setData({fileName:f.name,sheets:parsed.sheets,names:parsed.names});
+    toast(`${f.name} 로드 완료`);
+  }catch(err){ console.error(err); toast('읽기 실패: '+err.message,true); }
+  e.target.value='';
+});
+
+/* ============ 서버 번들 xlsx 자동 로드 (index.html 방식) ============ */
+async function loadBundledXlsx(){
+  try{
+    const res=await fetch('./data_2026_06_23.xlsx');
+    if(!res.ok) throw new Error('data_2026_06_23.xlsx를 불러오지 못했습니다 ('+res.status+')');
+    const parsed=await parseXlsx(await res.arrayBuffer());
+    setData({fileName:'data_2026_06_23.xlsx',sheets:parsed.sheets,names:parsed.names});
+    toast('서버 데이터 자동 로드 완료');
+  }catch(e){
     console.error(e);
-    setFileStatus(false, "엑셀 자동 로드 실패", String(e.message || e));
-    badgeNA();
-    ui.hintLine.textContent = "서버의 data_2026_06_23.xlsx를 불러오지 못했습니다.";
+    setData(null);
+    toast('서버 데이터 로드 실패 · 엑셀을 업로드하세요', true);
   }
 }
-  </script>
+
+/* ============ INIT ============ */
+(function init(){
+  setTheme(localStorage.getItem(THEME_KEY)||'light');
+  try{ const fv=JSON.parse(localStorage.getItem(FAV_KEY)); if(Array.isArray(fv)&&fv.length===5) state.favs=fv; }catch{}
+  try{ const hv=JSON.parse(localStorage.getItem(HIST_KEY)); if(Array.isArray(hv)) state.hist=hv.slice(0,8); }catch{}
+  if(typeof DecompressionStream==='undefined'){
+    setData(null);
+    toast('이 브라우저는 xlsx 해제를 지원하지 않습니다 (Chrome/Edge 권장)', true);
+  } else {
+    loadBundledXlsx();
+  }
+  setMode(localStorage.getItem(MODE_KEY)||'6.5');
+  try{ const inp=JSON.parse(localStorage.getItem(IN_KEY)); if(inp){ $('inSph').value=inp.sph||'';$('inCyl').value=inp.cyl||'';$('inThk').value=inp.thk||''; } }catch{}
+  renderFavs(); compute();
+  renderHistory();
+  if(!$('inSph').value){ $('inSph').focus(); }
+})();
+</script>
 </body>
 </html>

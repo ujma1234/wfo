@@ -1,0 +1,1370 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>절삭량 계산기 (6.0 / 6.5) - Offline XLSX</title>
+
+  <style>
+    /* =============================
+       THEME TOKENS (Light/Dark)
+       ============================= */
+    :root{
+      /* 125% scale baseline */
+      font-size: 125%;
+
+      --bg: #f4f6fa;
+      --bg2:#eef2ff;
+      --card: rgba(255,255,255,.94);
+      --card2: rgba(255,255,255,.86);
+      --stroke: rgba(15,23,42,.10);
+      --stroke2: rgba(15,23,42,.14);
+      --txt: #0f172a;
+      --muted: rgba(15,23,42,.62);
+      --muted2: rgba(15,23,42,.46);
+
+      --brand: #3182f6;
+      --brand2:#0ea5e9;
+      --good:#10b981;
+      --bad:#ef4444;
+
+      --shadow: 0 12px 34px rgba(15,23,42,.12);
+      --shadow2: 0 10px 26px rgba(15,23,42,.10);
+
+      --radius: 18px;
+      --radius2: 14px;
+    }
+
+    html[data-theme="dark"]{
+      --bg: #0b1220;
+      --bg2:#0f172a;
+      --card: rgba(15,23,42,.72);
+      --card2: rgba(15,23,42,.60);
+      --stroke: rgba(255,255,255,.10);
+      --stroke2: rgba(255,255,255,.14);
+      --txt: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.62);
+      --muted2: rgba(255,255,255,.45);
+
+      --shadow: 0 16px 44px rgba(0,0,0,.44);
+      --shadow2: 0 12px 30px rgba(0,0,0,.34);
+    }
+
+    *{box-sizing:border-box}
+    html{
+      min-height:100%;
+      overflow-x:hidden;
+      overscroll-behavior-x:none;
+      background:
+        radial-gradient(900px 450px at 15% 0%, rgba(49,130,246,.16), transparent 60%),
+        radial-gradient(850px 480px at 85% 10%, rgba(14,165,233,.10), transparent 60%),
+        linear-gradient(180deg, var(--bg2), var(--bg));
+      background-attachment:scroll;
+    }
+    body{
+      min-height:100%;
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      color:var(--txt);
+      background:transparent;
+      overflow-x:hidden;
+      overscroll-behavior-x:none;
+    }
+
+    .shell{
+      min-height: 100%;
+      padding: clamp(14px, 2.2vh, 28px) clamp(14px, 2.2vw, 22px) clamp(18px, 3vh, 34px);
+      display:flex;
+      justify-content:center;
+    }
+    .wrap{
+      width: min(1180px, 100%);
+      display:flex;
+      flex-direction:column;
+      gap: clamp(12px, 1.8vh, 18px);
+    }
+
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      gap: 12px;
+      flex-wrap:wrap;
+      align-items:flex-end;
+    }
+
+    .title{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      min-width: 260px;
+    }
+    .title h1{
+      margin:0;
+      font-size: clamp(18px, 2.2vw, 24px);
+      letter-spacing:-.4px;
+      line-height:1.15;
+    }
+    .title p{
+      margin:0;
+      color:var(--muted);
+      font-size: clamp(12px, 1.4vw, 13px);
+      line-height:1.45;
+    }
+
+    .actions{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+
+    .pill{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      background: var(--card2);
+      box-shadow: var(--shadow2);
+      max-width: 620px;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:999px;
+      background: rgba(15,23,42,.25);
+      box-shadow: 0 0 0 4px rgba(49,130,246,.10);
+      flex:0 0 auto;
+    }
+    html[data-theme="dark"] .dot{
+      background: rgba(255,255,255,.25);
+    }
+    .dot.ok{ background: var(--good); box-shadow: 0 0 0 4px rgba(16,185,129,.16); }
+    .pilltext{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .pilltext .name{
+      font-size: 13px;
+      font-weight: 950;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      max-width: 360px;
+    }
+    .pilltext .meta{
+      font-size: 12px;
+      color: var(--muted2);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      max-width: 560px;
+    }
+
+    .btn{
+      appearance:none;
+      border: 1px solid var(--stroke2);
+      background: var(--card);
+      color: var(--txt);
+      border-radius: 14px;
+      padding: 10px 12px;
+      cursor:pointer;
+      font-weight: 950;
+      font-size: 13px;
+      box-shadow: var(--shadow2);
+      transition: transform .14s ease, box-shadow .14s ease, border-color .14s ease;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      user-select:none;
+    }
+    .btn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(49,130,246,.35);
+      box-shadow: 0 14px 30px rgba(49,130,246,.10);
+    }
+    .btn:active{ transform: translateY(0) scale(.99); }
+
+    .btn.ghost{
+      background: transparent;
+      box-shadow:none;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap: clamp(10px, 1.6vw, 16px);
+      align-items:stretch;
+    }
+    @media (max-width: 960px){
+      .grid{ grid-template-columns: 1fr; }
+      .pilltext .name{ max-width: 66vw; }
+      .pilltext .meta{ max-width: 78vw; }
+    }
+
+    .card{
+      border-radius: var(--radius);
+      border: 1px solid var(--stroke);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+
+    .seg{
+      display:flex;
+      gap: 8px;
+      padding: 12px;
+      border-bottom: 1px solid var(--stroke);
+      background: rgba(49,130,246,.05);
+    }
+    html[data-theme="dark"] .seg{
+      background: rgba(49,130,246,.12);
+    }
+    .seg button{
+      flex:1;
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      background: transparent;
+      color: var(--muted2);
+      padding: 11px 10px;
+      cursor:pointer;
+      font-weight: 800;
+      font-size: 13px;
+      opacity: .85;
+      transition: transform .14s ease, background .14s ease, border-color .14s ease, color .14s ease, box-shadow .14s ease, opacity .14s ease;
+    }
+    .seg button:hover:not(.active){
+      background: rgba(49,130,246,.08);
+      color: var(--muted);
+      opacity: 1;
+    }
+    html[data-theme="dark"] .seg button{
+      background: transparent;
+    }
+    .seg button.active{
+      color: #fff;
+      font-weight: 1000;
+      border-color: rgba(49,130,246,.85);
+      background: linear-gradient(180deg, rgba(49,130,246,1), rgba(37,110,225,1));
+      box-shadow: 0 10px 24px rgba(49,130,246,.42), inset 0 0 0 1px rgba(255,255,255,.18);
+      opacity: 1;
+      transform: translateY(-1px);
+    }
+    .seg button:active{ transform: scale(.99); }
+
+    .content{
+      padding: clamp(14px, 2.2vw, 18px);
+      display:grid;
+      gap: 12px;
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    @media (max-width: 560px){
+      .row{ grid-template-columns: 1fr; }
+    }
+
+    label{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 1000;
+    }
+
+    .in{
+      width:100%;
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      background: rgba(255,255,255,.92);
+      color: var(--txt);
+      padding: 12px 12px;
+      font-size: 15px;
+      outline:none;
+      transition: border-color .14s ease, box-shadow .14s ease;
+    }
+    html[data-theme="dark"] .in{
+      background: rgba(0,0,0,.24);
+    }
+    .in:focus{
+      border-color: rgba(49,130,246,.65);
+      box-shadow: 0 0 0 4px rgba(49,130,246,.16);
+    }
+
+    .result{
+      border-radius: var(--radius);
+      border: 1px solid var(--stroke);
+      background: rgba(49,130,246,.05);
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      min-height: 176px;
+      justify-content:space-between;
+    }
+    html[data-theme="dark"] .result{
+      background: rgba(49,130,246,.10);
+    }
+    .result .hd{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+    }
+
+    .badge{
+      font-size: 11px;
+      font-weight: 1100;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--stroke);
+      color: var(--muted);
+      background: rgba(255,255,255,.75);
+      white-space:nowrap;
+      align-self:flex-start;
+    }
+    html[data-theme="dark"] .badge{
+      background: rgba(255,255,255,.06);
+    }
+    .badge.ok{
+      color: rgba(16,185,129,.95);
+      border-color: rgba(16,185,129,.35);
+      background: rgba(16,185,129,.10);
+    }
+    .badge.bad{
+      color: rgba(239,68,68,.95);
+      border-color: rgba(239,68,68,.35);
+      background: rgba(239,68,68,.10);
+    }
+
+    .value{
+      font-size: clamp(32px, 4.8vw, 46px);
+      font-weight: 900;
+      letter-spacing:-.9px;
+      line-height:1.05;
+      display:flex;
+      gap:10px;
+      align-items:baseline;
+    }
+
+    .hint{
+      font-size: 12px;
+      color: var(--muted);
+      line-height:1.5;
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace; }
+
+    .favwrap{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      margin-top: 4px;
+    }
+    .favtitle{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 1100;
+      flex-wrap:wrap;
+    }
+    .favgrid{
+      display:grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 780px){
+      .favgrid{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 460px){
+      .favgrid{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .fav{
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.92);
+      padding: 10px 10px;
+      cursor:pointer;
+      transition: transform .14s ease, border-color .14s ease, box-shadow .14s ease;
+      min-height: 66px;
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      justify-content:center;
+      box-shadow: 0 8px 18px rgba(15,23,42,.06);
+    }
+    html[data-theme="dark"] .fav{
+      background: rgba(0,0,0,.22);
+      box-shadow: 0 10px 22px rgba(0,0,0,.26);
+    }
+    .fav:hover{
+      transform: translateY(-1px);
+      border-color: rgba(49,130,246,.35);
+      box-shadow: 0 12px 26px rgba(49,130,246,.10);
+    }
+    .fav .t{
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--txt);
+      line-height:1.2;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .fav .s{
+      font-size: 11px;
+      color: var(--muted2);
+      font-weight: 950;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .fav{
+      position:relative;
+    }
+    .fav-del{
+      position:absolute;
+      top:6px;
+      right:6px;
+      width:20px;
+      height:20px;
+      border:none;
+      border-radius:50%;
+      background:rgba(239,68,68,.15);
+      color:rgba(239,68,68,.9);
+      font-size:11px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      opacity:0;
+      transition:opacity .14s ease, background .14s ease;
+    }
+    .fav:hover .fav-del{
+      opacity:1;
+    }
+    .fav-del:hover{
+      background:rgba(239,68,68,.25);
+    }
+    .fav.empty{
+      cursor:default;
+      opacity:.60;
+      background: rgba(255,255,255,.70);
+      box-shadow:none;
+    }
+    html[data-theme="dark"] .fav.empty{
+      background: rgba(255,255,255,.06);
+    }
+    .fav.empty:hover{ transform:none; border-color: var(--stroke); box-shadow:none; }
+
+    .sideblock{display:flex;flex-direction:column;gap: 14px;}
+    .sidebox{
+      border-radius: var(--radius);
+      border: 1px solid var(--stroke);
+      background: var(--card);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+    }
+    .sidebox h3{
+      margin:0;
+      font-size: 13px;
+      letter-spacing:-.2px;
+      font-weight: 900;
+    }
+    .sidebox .small{
+      font-size: 12px;
+      color: var(--muted);
+      line-height:1.55;
+    }
+
+    .toast{
+      position:fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(15,23,42,.92);
+      color: white;
+      padding: 10px 12px;
+      border-radius: 14px;
+      box-shadow: 0 12px 28px rgba(0,0,0,.22);
+      font-size: 12px;
+      font-weight: 950;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 9999;
+      max-width: min(92vw, 740px);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(-2px);
+    }
+
+    /* tighter buttons row on small screens */
+    @media (max-width: 520px){
+      .actions{ justify-content:flex-start; }
+      .pill{ width: 100%; max-width: none; }
+      .btn{ flex:1; justify-content:center; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="shell">
+    <div class="wrap">
+      <div class="topbar">
+        <div class="title">
+          <h1>절삭량 계산기 <span class="mono" style="opacity:.75">(6.0 / 6.5)</span></h1>
+          <p>
+            엑셀 공식 그대로: <span class="mono">잔여 = 두께 − 표조회 − 100</span><br/>
+            계산은 <b>0.01 단위 정수화</b>로 처리해 표시/연산 오차를 제거합니다.
+          </p>
+        </div>
+
+        <div class="actions">
+          <div class="pill" title="엑셀(xlsx)을 업로드하면 내부 표를 파싱합니다.">
+            <div id="fileDot" class="dot"></div>
+            <div class="pilltext">
+              <div id="fileName" class="name">엑셀 미로드</div>
+              <div id="fileMeta" class="meta">xlsx 업로드를 기다리는 중…</div>
+            </div>
+          </div>
+
+          <button class="btn" id="themeBtn" type="button" aria-label="다크/라이트 모드 전환">
+            <span id="themeIcon">🌙</span><span id="themeText">다크</span>
+          </button>
+
+          <button class="btn" id="pickBtn" type="button" aria-label="엑셀 파일 업로드">
+            <span>📄</span><span>엑셀 업로드</span>
+          </button>
+
+          <button class="btn" id="clearBtn" type="button" aria-label="입력값 전체 초기화">
+            <span>🧽</span><span>Clear</span>
+          </button>
+
+          <input id="fileInput" type="file" accept=".xlsx" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;" />
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Main -->
+        <div class="card">
+          <div class="seg">
+            <button id="tab60" type="button">6.0mm</button>
+            <button id="tab65" class="active" type="button">6.5mm</button>
+          </div>
+
+          <div class="content">
+            <div class="row">
+              <label>
+                Sphere (sph)
+                <input id="inpSph" class="in" placeholder="예: -3.00" autocomplete="off" />
+              </label>
+
+              <label>
+                Cylinder (cyl)
+                <input id="inpCyl" class="in" placeholder="예: -1.00" autocomplete="off" />
+              </label>
+            </div>
+
+            <div class="row">
+              <label>
+                두께
+                <input id="inpThk" class="in" inputmode="decimal" placeholder="예: 550" autocomplete="off" />
+              </label>
+
+              <div class="result" aria-live="polite">
+                <div class="hd">
+                  <div style="display:flex;flex-direction:column;gap:4px;">
+                    <div style="font-size:12px;color:var(--muted);font-weight:900;">결과 (잔여)</div>
+                    <div id="formulaLine" class="mono" style="font-size:12px;color:var(--muted);font-weight:900;">
+                      6.5mm: 두께 − WFO6.5 − 100
+                    </div>
+                  </div>
+                  <span id="statusBadge" class="badge">N/A</span>
+                </div>
+
+                <div class="value">
+                  <span id="outVal">N/A</span>
+                </div>
+
+                <div class="hint" id="hintLine">
+                  엑셀을 업로드한 뒤 sph/cyl/두께를 입력하면 자동 계산됩니다.
+                </div>
+              </div>
+            </div>
+
+            <div class="favwrap">
+              <div class="favtitle">
+                <span>즐겨찾기 (최대 5개)</span>
+                <div style="display:flex;gap:6px;">
+                  <button class="btn ghost" id="addFavBtn" type="button" style="padding:8px 10px;border-radius:12px;font-size:12px;">
+                    ⭐ 등록
+                  </button>
+                  <button class="btn ghost" id="clearFavBtn" type="button" style="padding:8px 10px;border-radius:12px;font-size:12px;">
+                    🧹 삭제
+                  </button>
+                </div>
+              </div>
+              <div class="favgrid" id="favGrid"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side -->
+        <div class="sideblock">
+          <div class="sidebox">
+            <h3>동작 규칙</h3>
+            <div class="small">
+              • <b class="mono">WFO 6mm</b> / <b class="mono">WFO 6.5mm</b> 시트에서 sph(행), cyl(열)을 <b>정확히 매칭</b>합니다.<br/>
+              • 해당 교차값이 “-”이거나 비어 있으면 <b>N/A</b>가 정상입니다.<br/>
+              • 유효하면 즉시: <b class="mono">두께 − 조회값 − 100</b>
+            </div>
+          </div>
+
+          <div class="sidebox">
+            <h3>브라우저 요구사항</h3>
+            <div class="small">
+              이 페이지는 외부 라이브러리 없이 <b>xlsx(zip+deflate)</b>를 풀기 위해
+              <span class="mono">DecompressionStream</span>을 사용합니다.<br/>
+              Chrome/Edge 권장. 지원이 없으면 안내 메시지가 뜹니다.
+            </div>
+          </div>
+
+          <div class="sidebox">
+            <h3>오차 제거</h3>
+            <div class="small">
+              부동소수점 오차를 막기 위해, 두께/조회값을 <b>×100 정수(0.01단위)</b>로 바꿔 계산 후 다시 표시합니다.
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    /******************************************************************
+     * XLSX Offline Reader (No external libraries)
+     * - Parses ZIP central directory
+     * - Inflates DEFLATE entries using DecompressionStream('deflate-raw')
+     * - Reads:
+     *    xl/workbook.xml
+     *    xl/_rels/workbook.xml.rels
+     *    xl/sharedStrings.xml (optional)
+     *    xl/worksheets/*.xml
+     *
+     * Then extracts:
+     *   "WFO 6mm", "WFO 6.5mm"
+     *   ranges: sph A3:A51, cyl B2:Z2, data B3:Z51
+     *
+     * EXACT formula:
+     *   residual = thickness - lookup - 100
+     * using centi-integers to eliminate float error.
+     ******************************************************************/
+
+    const SHEET_60 = "WFO 6mm";
+    const SHEET_65 = "WFO 6.5mm";
+
+    // sph는 행 3부터 시작, 끝은 동적 감지
+    const R_SPH_START = 3;
+    // cyl은 B~Z 고정
+    const C_CYL_START = 2, C_CYL_END = 26;
+
+    const OFFSET = 100;
+
+    const ui = {
+      tab60: document.getElementById("tab60"),
+      tab65: document.getElementById("tab65"),
+      inpSph: document.getElementById("inpSph"),
+      inpCyl: document.getElementById("inpCyl"),
+      inpThk: document.getElementById("inpThk"),
+      outVal: document.getElementById("outVal"),
+      statusBadge: document.getElementById("statusBadge"),
+      hintLine: document.getElementById("hintLine"),
+      formulaLine: document.getElementById("formulaLine"),
+
+      fileDot: document.getElementById("fileDot"),
+      fileName: document.getElementById("fileName"),
+      fileMeta: document.getElementById("fileMeta"),
+
+      pickBtn: document.getElementById("pickBtn"),
+      fileInput: document.getElementById("fileInput"),
+      clearBtn: document.getElementById("clearBtn"),
+
+      themeBtn: document.getElementById("themeBtn"),
+      themeIcon: document.getElementById("themeIcon"),
+      themeText: document.getElementById("themeText"),
+
+      favGrid: document.getElementById("favGrid"),
+      addFavBtn: document.getElementById("addFavBtn"),
+      clearFavBtn: document.getElementById("clearFavBtn"),
+
+      toast: document.getElementById("toast"),
+    };
+
+    let mode = "6.5"; // "6.0" or "6.5"
+
+    const tables = { "6.0": null, "6.5": null }; // {sphList,cylList,valueMap}
+    const FAV_KEY = "wfo_calc_favs_offline_v1";
+    const THEME_KEY = "wfo_calc_theme_v1";
+
+    function toast(msg){
+      ui.toast.textContent = msg;
+      ui.toast.classList.add("show");
+      clearTimeout(toast._t);
+      toast._t = setTimeout(()=>ui.toast.classList.remove("show"), 1700);
+    }
+
+    function setFileStatus(ok, name, meta){
+      ui.fileDot.classList.toggle("ok", !!ok);
+      ui.fileName.textContent = name || (ok ? "엑셀 로드됨" : "엑셀 미로드");
+      ui.fileMeta.textContent = meta || "";
+    }
+
+    function badgeNA(){
+      ui.statusBadge.textContent = "N/A";
+      ui.statusBadge.classList.remove("ok","bad");
+      ui.outVal.textContent = "N/A";
+    }
+    function badgeOK(){
+      ui.statusBadge.textContent = "OK";
+      ui.statusBadge.classList.add("ok");
+      ui.statusBadge.classList.remove("bad");
+    }
+    function badgeBAD(){
+      ui.statusBadge.textContent = "N/A";
+      ui.statusBadge.classList.add("bad");
+      ui.statusBadge.classList.remove("ok");
+    }
+
+    function setMode(next){
+      mode = next;
+      ui.tab60.classList.toggle("active", mode==="6.0");
+      ui.tab65.classList.toggle("active", mode==="6.5");
+      ui.formulaLine.textContent = (mode==="6.0")
+        ? "6.0mm: 두께 − WFO6 − 100"
+        : "6.5mm: 두께 − WFO6.5 − 100";
+      renderFavorites();
+      computeAndRender();
+    }
+    ui.tab60.addEventListener("click", ()=>setMode("6.0"));
+    ui.tab65.addEventListener("click", ()=>setMode("6.5"));
+
+    // =============================
+    // Theme toggle
+    // =============================
+    function applyTheme(theme){
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem(THEME_KEY, theme);
+      const isDark = theme === "dark";
+      ui.themeIcon.textContent = isDark ? "☀️" : "🌙";
+      ui.themeText.textContent = isDark ? "라이트" : "다크";
+    }
+    ui.themeBtn.addEventListener("click", ()=>{
+      const cur = document.documentElement.getAttribute("data-theme") || "light";
+      applyTheme(cur === "dark" ? "light" : "dark");
+    });
+
+    // =============================
+    // Float error removal (centi units)
+    // =============================
+    function toCenti(n){ return Math.round(n * 100); }
+    function fromCenti(x){ return x / 100; }
+    function fmt2(n){
+      if (!Number.isFinite(n)) return "N/A";
+      const s = n.toFixed(2);
+      return s.replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+    }
+    function numOrNaN(v){
+      if (v === null || v === undefined) return NaN;
+      if (typeof v === "number") return v;
+      const s = String(v).trim();
+      if (!s) return NaN;
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+    function toKey(sph, cyl){ return `${sph}|${cyl}`; }
+
+    // =============================
+    // Favorites (수동 등록 방식)
+    // =============================
+    function loadFavStore(){
+      try{
+        const raw = localStorage.getItem(FAV_KEY);
+        if (!raw) return { "6.0": [], "6.5": [] };
+        const obj = JSON.parse(raw);
+        // 배열 형태로 마이그레이션
+        if (!Array.isArray(obj["6.0"])) obj["6.0"] = [];
+        if (!Array.isArray(obj["6.5"])) obj["6.5"] = [];
+        return obj;
+      }catch(_e){
+        return { "6.0": [], "6.5": [] };
+      }
+    }
+    function saveFavStore(store){
+      localStorage.setItem(FAV_KEY, JSON.stringify(store));
+    }
+    function addFavorite(){
+      const sph = ui.inpSph.value.trim();
+      const cyl = ui.inpCyl.value.trim();
+      const thk = ui.inpThk.value.trim();
+      if (!sph || !cyl || !thk){
+        toast("sph, cyl, 두께를 모두 입력하세요");
+        return;
+      }
+
+      const store = loadFavStore();
+      const k = `${sph}|${cyl}|${thk}`;
+      
+      // 이미 존재하면 제거 후 맨 앞에 추가
+      const idx = store[mode].indexOf(k);
+      if (idx !== -1) store[mode].splice(idx, 1);
+      
+      // 맨 앞에 추가
+      store[mode].unshift(k);
+      
+      // 최대 5개 유지
+      if (store[mode].length > 5) store[mode] = store[mode].slice(0, 5);
+      
+      saveFavStore(store);
+      renderFavorites();
+      toast("즐겨찾기에 등록되었습니다");
+    }
+    function removeFavorite(index){
+      const store = loadFavStore();
+      store[mode].splice(index, 1);
+      saveFavStore(store);
+      renderFavorites();
+      toast("즐겨찾기에서 삭제되었습니다");
+    }
+    function getFavorites(){
+      const store = loadFavStore();
+      return (store[mode] || []).map(k => {
+        const [sph, cyl, thk] = k.split("|");
+        return { sph, cyl, thk };
+      });
+    }
+    function escapeHtml(s){
+      return String(s)
+        .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+    }
+    function renderFavorites(){
+      ui.favGrid.innerHTML = "";
+      const favs = getFavorites();
+      const slots = 5;
+
+      for (let i=0;i<slots;i++){
+        const f = favs[i];
+        const el = document.createElement("div");
+        el.className = "fav" + (f ? "" : " empty");
+
+        if (!f){
+          el.innerHTML = `<div class="t">빈 슬롯</div><div class="s">⭐ 버튼으로 등록하세요</div>`;
+          ui.favGrid.appendChild(el);
+          continue;
+        }
+
+        el.innerHTML = `
+          <div class="t">sph ${escapeHtml(f.sph)} / cyl ${escapeHtml(f.cyl)}</div>
+          <div class="s">두께 ${escapeHtml(f.thk)}</div>
+          <button class="fav-del" data-idx="${i}" type="button" title="삭제">✕</button>
+        `;
+        el.addEventListener("click", (e)=>{
+          if (e.target.classList.contains("fav-del")) return;
+          ui.inpSph.value = f.sph;
+          ui.inpCyl.value = f.cyl;
+          ui.inpThk.value = f.thk;
+          computeAndRender();
+        });
+        el.querySelector(".fav-del").addEventListener("click", (e)=>{
+          e.stopPropagation();
+          removeFavorite(i);
+        });
+        ui.favGrid.appendChild(el);
+      }
+    }
+    ui.addFavBtn.addEventListener("click", addFavorite);
+    ui.clearFavBtn.addEventListener("click", ()=>{
+      const store = loadFavStore();
+      store[mode] = [];
+      saveFavStore(store);
+      renderFavorites();
+      toast("즐겨찾기를 모두 삭제했습니다");
+    });
+
+    // =============================
+    // Clear all inputs button
+    // =============================
+    ui.clearBtn.addEventListener("click", ()=>{
+      ui.inpSph.value = "";
+      ui.inpCyl.value = "";
+      ui.inpThk.value = "";
+      badgeNA();
+      ui.hintLine.textContent = "입력값을 모두 초기화했습니다.";
+      toast("Clear 완료");
+    });
+
+    function findExactInList(list, input){
+      const n = numOrNaN(input);
+      if (!Number.isFinite(n)) return null;
+      // 부동소수점 비교: 0.001 이내면 동일값으로 간주
+      const EPS = 0.001;
+      for (const v of list){
+        if (Math.abs(v - n) < EPS) return v;
+      }
+      return null;
+    }
+
+    // =============================
+    // Compute
+    // =============================
+    function computeAndRender(){
+      const t = tables[mode];
+      if (!t){
+        badgeNA();
+        ui.hintLine.textContent = "엑셀을 업로드하면 자동 계산됩니다.";
+        renderFavorites();
+        return;
+      }
+
+      const sphIn = ui.inpSph.value.trim();
+      const cylIn = ui.inpCyl.value.trim();
+      const thkIn = ui.inpThk.value.trim();
+
+      if (!sphIn || !cylIn || !thkIn){
+        badgeNA();
+        ui.hintLine.textContent = "sph / cyl / 두께를 입력하세요.";
+        return;
+      }
+
+      const sph = findExactInList(t.sphList, sphIn);
+      const cyl = findExactInList(t.cylList, cylIn);
+      const thk = numOrNaN(thkIn);
+
+      if (sph === null || cyl === null || !Number.isFinite(thk)){
+        badgeBAD();
+        ui.outVal.textContent = "N/A";
+        ui.hintLine.textContent = "표에 있는 정확한 sph/cyl 값 + 숫자 두께를 입력하세요.";
+        return;
+      }
+
+      const lookup = t.valueMap.get(toKey(sph, cyl));
+      if (lookup === null || lookup === undefined){
+        badgeBAD();
+        ui.outVal.textContent = "N/A";
+        ui.hintLine.textContent = "해당 sph/cyl 조합의 표 값이 '-'이거나 비어 있습니다.";
+        return;
+      }
+
+      // exact math in centi-units:
+      const thkC = toCenti(thk);
+      const lookC = toCenti(lookup);
+      const resC = thkC - lookC - OFFSET * 100;
+      const res = fromCenti(resC);
+
+      badgeOK();
+      ui.outVal.textContent = fmt2(res);
+      ui.hintLine.textContent =
+        `조회값=${fmt2(lookup)} → ${fmt2(thk)} − ${fmt2(lookup)} − ${OFFSET} = ${fmt2(res)}`;
+    }
+
+    ["input","change","keyup"].forEach(ev=>{
+      ui.inpSph.addEventListener(ev, computeAndRender);
+      ui.inpCyl.addEventListener(ev, computeAndRender);
+      ui.inpThk.addEventListener(ev, computeAndRender);
+    });
+
+    // =============================
+    // XLSX Reader (ZIP + XML)
+    // =============================
+
+    // --- A1 helpers ---
+    function colToNumber(col){
+      // A -> 1
+      let n = 0;
+      for (let i=0;i<col.length;i++){
+        const c = col.charCodeAt(i);
+        n = n*26 + (c - 64);
+      }
+      return n;
+    }
+
+    // --- ZIP parsing (central directory) ---
+    function u16(dv, o){ return dv.getUint16(o, true); }
+    function u32(dv, o){ return dv.getUint32(o, true); }
+
+    function findEOCD(buf){
+      // EOCD signature 0x06054b50
+      const dv = new DataView(buf);
+      for (let i = buf.byteLength - 22; i >= Math.max(0, buf.byteLength - 0x10000); i--){
+        if (dv.getUint32(i, true) === 0x06054b50) return i;
+      }
+      return -1;
+    }
+
+    function parseCentralDirectory(buf){
+      const dv = new DataView(buf);
+      const eocd = findEOCD(buf);
+      if (eocd < 0) throw new Error("ZIP EOCD를 찾지 못했습니다. (xlsx가 손상됐을 수 있음)");
+
+      const cdSize = u32(dv, eocd + 12);
+      const cdOff  = u32(dv, eocd + 16);
+
+      let off = cdOff;
+      const files = new Map();
+
+      while (off < cdOff + cdSize){
+        const sig = dv.getUint32(off, true);
+        if (sig !== 0x02014b50) break;
+
+        const compMethod = u16(dv, off + 10);
+        const compSize   = u32(dv, off + 20);
+        const uncompSize = u32(dv, off + 24);
+        const nameLen    = u16(dv, off + 28);
+        const extraLen   = u16(dv, off + 30);
+        const cmtLen     = u16(dv, off + 32);
+        const lfhOff     = u32(dv, off + 42);
+
+        const nameBytes = new Uint8Array(buf, off + 46, nameLen);
+        const name = new TextDecoder("utf-8").decode(nameBytes);
+
+        files.set(name, { compMethod, compSize, uncompSize, lfhOff });
+
+        off = off + 46 + nameLen + extraLen + cmtLen;
+      }
+      return files;
+    }
+
+    function readLocalFileEntry(buf, entry){
+      const dv = new DataView(buf);
+      const off = entry.lfhOff;
+      if (dv.getUint32(off, true) !== 0x04034b50) {
+        throw new Error("ZIP Local File Header가 올바르지 않습니다.");
+      }
+      const nameLen  = u16(dv, off + 26);
+      const extraLen = u16(dv, off + 28);
+      const dataOff  = off + 30 + nameLen + extraLen;
+      const compData = new Uint8Array(buf, dataOff, entry.compSize);
+      return { compData };
+    }
+
+    async function inflateIfNeeded(compMethod, compData){
+      if (compMethod === 0) {
+        return compData; // stored
+      }
+      if (compMethod !== 8) {
+        throw new Error("지원하지 않는 ZIP 압축 방식입니다: " + compMethod);
+      }
+      if (typeof DecompressionStream === "undefined") {
+        throw new Error("이 브라우저는 DecompressionStream을 지원하지 않습니다. (Chrome/Edge 권장)");
+      }
+      const ds = new DecompressionStream("deflate-raw");
+      const stream = new Blob([compData]).stream().pipeThrough(ds);
+      const ab = await new Response(stream).arrayBuffer();
+      return new Uint8Array(ab);
+    }
+
+    async function getZipTextFile(buf, files, path){
+      const entry = files.get(path);
+      if (!entry) return null;
+      const { compData } = readLocalFileEntry(buf, entry);
+      const data = await inflateIfNeeded(entry.compMethod, compData);
+      return new TextDecoder("utf-8").decode(data);
+    }
+
+    function parseXml(text){
+      const doc = new DOMParser().parseFromString(text, "application/xml");
+      const pe = doc.getElementsByTagName("parsererror")[0];
+      if (pe) throw new Error("XML 파싱 오류: " + pe.textContent);
+      return doc;
+    }
+
+    function getSharedStrings(doc){
+      // sharedStrings.xml: <sst><si>...</si></sst>
+      const sst = doc.getElementsByTagName("sst")[0];
+      if (!sst) return [];
+      const sis = Array.from(sst.getElementsByTagName("si"));
+      const out = new Array(sis.length);
+      for (let i=0;i<sis.length;i++){
+        const si = sis[i];
+        // Can be <t> or rich <r><t>
+        const ts = si.getElementsByTagName("t");
+        let s = "";
+        for (const t of Array.from(ts)){
+          s += t.textContent ?? "";
+        }
+        out[i] = s;
+      }
+      return out;
+    }
+
+    function buildWorkbookSheetMap(workbookDoc, relsDoc){
+      // workbook.xml: <sheets><sheet name="" r:id="rId1" />
+      const sheetsEl = workbookDoc.getElementsByTagName("sheets")[0];
+      if (!sheetsEl) throw new Error("workbook.xml에서 sheets를 찾지 못했습니다.");
+
+      const relMap = new Map();
+      // workbook.xml.rels: <Relationship Id="rId1" Target="worksheets/sheet1.xml" />
+      const rels = Array.from(relsDoc.getElementsByTagName("Relationship"));
+      for (const r of rels){
+        const id = r.getAttribute("Id");
+        const target = r.getAttribute("Target");
+        if (id && target) relMap.set(id, "xl/" + target.replace(/^\//,""));
+      }
+
+      const sheetNodes = Array.from(sheetsEl.getElementsByTagName("sheet"));
+      const map = new Map(); // sheetName -> worksheetPath
+      for (const s of sheetNodes){
+        const name = s.getAttribute("name");
+        const rid = s.getAttribute("r:id");
+        if (!name || !rid) continue;
+        const path = relMap.get(rid);
+        if (path) map.set(name, path);
+      }
+      return map;
+    }
+
+    function buildCellMap(sheetDoc, sharedStrings){
+      // Build Map<A1, value> from <sheetData><row><c r="A1" t="s"><v>0</v></c>
+      const map = new Map();
+      const cells = Array.from(sheetDoc.getElementsByTagName("c"));
+      for (const c of cells){
+        const ref = c.getAttribute("r");
+        if (!ref) continue;
+
+        const t = c.getAttribute("t"); // "s" for shared string
+        const vEl = c.getElementsByTagName("v")[0];
+        const isEl = c.getElementsByTagName("is")[0]; // inline string sometimes
+
+        let value = undefined;
+
+        if (t === "s"){
+          if (!vEl) continue;
+          const idx = parseInt(vEl.textContent || "", 10);
+          value = sharedStrings[idx] ?? "";
+        } else if (t === "inlineStr"){
+          if (isEl) value = isEl.textContent ?? "";
+        } else {
+          if (!vEl) continue;
+          const raw = (vEl.textContent || "").trim();
+          // treat as number if numeric
+          const n = Number(raw);
+          value = Number.isFinite(n) ? n : raw;
+        }
+
+        map.set(ref, value);
+      }
+      return map;
+    }
+
+    function extractTableFromCellMap(cellMap){
+      // sph: A열에서 행 3부터 숫자가 있는 동안 동적으로 읽기
+      const sphList = [];
+      for (let r = R_SPH_START; r <= 200; r++){  // 최대 200행까지 탐색
+        const v = cellMap.get(`A${r}`);
+        const n = numOrNaN(v);
+        if (!Number.isFinite(n)) break;  // 숫자가 아니면 종료
+        sphList.push(n);
+      }
+      
+      if (sphList.length === 0) {
+        throw new Error("sph 데이터를 찾지 못했습니다 (A열, 행 3부터)");
+      }
+      
+      const R_SPH_END = R_SPH_START + sphList.length - 1;
+
+      // cyl B2:Z2 => columns 2..26
+      const cylList = [];
+      for (let c=C_CYL_START; c<=C_CYL_END; c++){
+        const col = numberToCol(c);
+        let v = cellMap.get(`${col}2`);
+        if (typeof v === "string") v = v.trim();
+        const n = numOrNaN(v);
+        if (!Number.isFinite(n)) throw new Error("cyl 범위(B2:Z2)에서 숫자 파싱 실패: " + col + "2");
+        cylList.push(n);
+      }
+
+      // data: sph 행 범위 x cyl 열 범위
+      const valueMap = new Map();
+      for (let i=0;i<sphList.length;i++){
+        for (let j=0;j<cylList.length;j++){
+          const r = R_SPH_START + i;
+          const c = C_CYL_START + j;
+          const col = numberToCol(c);
+          let v = cellMap.get(`${col}${r}`);
+
+          if (typeof v === "string"){
+            const s = v.trim();
+            if (s === "-" || s === "") v = undefined;
+          }
+
+          const n = numOrNaN(v);
+          const val = Number.isFinite(n) ? n : null;
+          const k = toKey(sphList[i], cylList[j]);
+          if (!valueMap.has(k)) valueMap.set(k, val);
+        }
+      }
+
+      return { sphList, cylList, valueMap };
+    }
+
+    function numberToCol(n){
+      // 1->A
+      let s = "";
+      while (n > 0){
+        const r = (n - 1) % 26;
+        s = String.fromCharCode(65 + r) + s;
+        n = Math.floor((n - 1) / 26);
+      }
+      return s;
+    }
+
+    async function parseXlsx(arrayBuffer){
+      const buf = arrayBuffer;
+      const files = parseCentralDirectory(buf);
+
+      const workbookXml = await getZipTextFile(buf, files, "xl/workbook.xml");
+      const relsXml     = await getZipTextFile(buf, files, "xl/_rels/workbook.xml.rels");
+      if (!workbookXml || !relsXml) throw new Error("workbook.xml 또는 workbook.xml.rels를 찾지 못했습니다.");
+
+      const sharedXml   = await getZipTextFile(buf, files, "xl/sharedStrings.xml");
+      const sharedStrings = sharedXml ? getSharedStrings(parseXml(sharedXml)) : [];
+
+      const wbDoc = parseXml(workbookXml);
+      const relDoc = parseXml(relsXml);
+      const sheetMap = buildWorkbookSheetMap(wbDoc, relDoc);
+
+      const path60 = sheetMap.get(SHEET_60);
+      const path65 = sheetMap.get(SHEET_65);
+      if (!path60 || !path65){
+        const names = Array.from(sheetMap.keys()).join(", ");
+        throw new Error(`필수 시트("${SHEET_60}", "${SHEET_65}")를 찾지 못했습니다. (발견된 시트: ${names})`);
+      }
+
+      const sheet60Xml = await getZipTextFile(buf, files, path60);
+      const sheet65Xml = await getZipTextFile(buf, files, path65);
+      if (!sheet60Xml || !sheet65Xml) throw new Error("워크시트 XML을 읽지 못했습니다.");
+
+      const s60Doc = parseXml(sheet60Xml);
+      const s65Doc = parseXml(sheet65Xml);
+
+      const cell60 = buildCellMap(s60Doc, sharedStrings);
+      const cell65 = buildCellMap(s65Doc, sharedStrings);
+
+      const t60 = extractTableFromCellMap(cell60);
+      const t65 = extractTableFromCellMap(cell65);
+
+      return { t60, t65 };
+    }
+
+    // =============================
+    // File upload
+    // =============================
+    ui.pickBtn.addEventListener("click", ()=>{
+      ui.fileInput.value = ""; // allow re-upload same file
+      ui.fileInput.click();
+    });
+
+    ui.fileInput.addEventListener("change", async (e)=>{
+      const f = e.target.files && e.target.files[0];
+      if (!f) return;
+
+      if (!/\.xlsx$/i.test(f.name)){
+        toast("xlsx 파일만 지원합니다.");
+        return;
+      }
+
+      setFileStatus(false, "로딩 중…", "xlsx를 파싱하고 있습니다. 잠시만…");
+
+      try{
+        const buf = await f.arrayBuffer();
+        const { t60, t65 } = await parseXlsx(buf);
+
+        tables["6.0"] = t60;
+        tables["6.5"] = t65;
+
+        setFileStatus(true, f.name, `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`);
+        toast("엑셀 로드 완료");
+
+        computeAndRender();
+      }catch(err){
+        console.error(err);
+        tables["6.0"] = null;
+        tables["6.5"] = null;
+
+        setFileStatus(false, "엑셀 로드 실패", String(err.message || err));
+        badgeNA();
+        ui.hintLine.textContent = "엑셀을 다시 업로드해 주세요.";
+        toast("엑셀 로드 실패");
+      }
+    });
+
+    // =============================
+    // Init
+    // =============================
+    (function init(){
+      // theme
+      const savedTheme = localStorage.getItem(THEME_KEY);
+      if (savedTheme === "dark" || savedTheme === "light"){
+        applyTheme(savedTheme);
+      } else {
+        // default: system preference
+        const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        applyTheme(prefersDark ? "dark" : "light");
+      }
+
+      // initial mode
+      setMode("6.5");
+
+      // initial favorites + UI
+      renderFavorites();
+      badgeNA();
+
+      // capability check
+      if (typeof DecompressionStream === "undefined"){
+        setFileStatus(false, "브라우저 미지원", "DecompressionStream 미지원: Chrome/Edge 권장");
+        ui.hintLine.textContent = "이 브라우저에서는 xlsx(zip) 해제가 불가능합니다. Chrome/Edge로 열어주세요.";
+      } else {
+        loadBundledXlsx();
+      }
+    })();
+
+    async function loadBundledXlsx() {
+  try {
+    setFileStatus(false, "로딩 중…", "서버의 data_2026_06_23.xlsx를 불러오는 중");
+
+    const res = await fetch("./data_2026_06_23.xlsx");
+    if (!res.ok) {
+      throw new Error("data_2026_06_23.xlsx를 불러오지 못했습니다");
+    }
+
+    const buf = await res.arrayBuffer();
+    const { t60, t65 } = await parseXlsx(buf);
+
+    tables["6.0"] = t60;
+    tables["6.5"] = t65;
+
+    setFileStatus(
+      true,
+      "data_2026_06_23.xlsx",
+      `시트 "${SHEET_60}", "${SHEET_65}" · sph ${t60.sphList.length} · cyl ${t60.cylList.length}`
+    );
+
+    computeAndRender();
+    toast("엑셀 자동 로드 완료");
+  } catch (e) {
+    console.error(e);
+    setFileStatus(false, "엑셀 자동 로드 실패", String(e.message || e));
+    badgeNA();
+    ui.hintLine.textContent = "서버의 data_2026_06_23.xlsx를 불러오지 못했습니다.";
+  }
+}
+  </script>
+</body>
+</html>

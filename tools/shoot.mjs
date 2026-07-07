@@ -1,0 +1,11 @@
+import { chromium } from 'playwright';
+const URL='http://127.0.0.1:8123/index.html';
+const b=await chromium.launch();
+const ctx=await b.newContext({viewport:{width:412,height:880},deviceScaleFactor:2,isMobile:true});
+const p=await ctx.newPage();
+await p.goto(URL,{waitUntil:'networkidle'});
+await p.waitForFunction(()=>/시트|sph/.test(document.getElementById('fileMeta')?.textContent||''),{timeout:8000}).catch(()=>{});
+await p.fill('#inSph','-3.00');await p.fill('#inCyl','-1.00');await p.fill('#inThk','550');await p.locator('#inThk').blur();
+await p.waitForTimeout(600);
+await p.screenshot({path:'/tmp/shot-mobile-light.png',fullPage:true});
+await ctx.close(); await b.close();
